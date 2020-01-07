@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using GameLovers.ConfigsImporter;
+using GameLovers.ConfigsContainer;
 using UnityEditor;
 using UnityEngine;
 
