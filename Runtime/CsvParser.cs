@@ -8,7 +8,7 @@ using UnityEngine;
 
 // ReSharper disable once CheckNamespace
 
-namespace GameLoversEditor.GoogleSheetImporter
+namespace GameLovers.GoogleSheetImporter
 {
 	/// <summary>
 	/// Helper class to parse CSV text
@@ -24,6 +24,7 @@ namespace GameLoversEditor.GoogleSheetImporter
 			var dictionaryType = typeof(IDictionary);
 			var listType = typeof(IList);
 			var keyValueType = typeof(KeyValuePair<,>);
+			var ignoreType = typeof(ParseIgnoreAttribute);
 			var instance = Activator.CreateInstance(type);
 
 			foreach (var field in type.GetFields())
@@ -33,6 +34,13 @@ namespace GameLoversEditor.GoogleSheetImporter
 					Debug.LogWarning($"The data does not contain the field {field.Name} data for the object of {type} type");
 					continue;
 				}
+
+				if (field.GetCustomAttributes(ignoreType, false).Length == 1)
+				{
+					continue;
+				}
+				
+				Debug.Log(field.Name + "  " + field.GetCustomAttributes(ignoreType, false).Length);
 				
 				var stringSerialized = "";
 				

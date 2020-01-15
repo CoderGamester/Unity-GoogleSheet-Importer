@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using System.Runtime.Remoting.Messaging;
 using GameLovers.ConfigsContainer;
+using GameLovers.GoogleSheetImporter;
 using UnityEditor;
 using UnityEngine;
 
@@ -37,10 +39,18 @@ namespace GameLoversEditor.GoogleSheetImporter
 			
 			foreach (var pair in data)
 			{
-				scriptableObject.Configs.Add(CsvParser.DeserializeTo<TConfig>(pair));
+				scriptableObject.Configs.Add(Deserialize(pair));
 			}
 			
 			EditorUtility.SetDirty(scriptableObject);
+		}
+
+		/// <summary>
+		/// Override this method to have your own deserialization of the given <paramref name="data"/>
+		/// </summary>
+		protected virtual TConfig Deserialize(Dictionary<string, string> data)
+		{
+			return CsvParser.DeserializeTo<TConfig>(data);
 		}
 	}
 }
