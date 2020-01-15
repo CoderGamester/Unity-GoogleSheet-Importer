@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using GameLovers.GoogleSheetImporter;
 using NUnit.Framework;
 
 // ReSharper disable ClassNeverInstantiated.Global
@@ -18,6 +19,8 @@ namespace GameLoversEditor.GoogleSheetImporter.Tests
 
 		public class MockClass
 		{
+			[ParseIgnore]
+			public string Ignored;
 			public string String;
 			public int Int;
 			public float Float;
@@ -29,8 +32,8 @@ namespace GameLoversEditor.GoogleSheetImporter.Tests
 			public Dictionary<int,int> Dictionary;
 		}
 
-		private const string _csv = "String,Int,Float,Double,Enum,Array,List,Pair,Dictionary\r\n" +
-		                            "text,1,1.1,1.1,MockValue,\"1,2\",\"1,2\",\"1,2\",\"1,2\"";
+		private const string _csv = "Ignored,String,Int,Float,Double,Enum,Array,List,Pair,Dictionary\r\n" +
+		                            "Ignored,text,1,1.1,1.1,MockValue,\"1,2\",\"1,2\",\"1,2\",\"1,2\"";
 		
 		[Test]
 		public void ConvertCsv_Successfully()
@@ -38,7 +41,8 @@ namespace GameLoversEditor.GoogleSheetImporter.Tests
 			var dic = CsvParser.ConvertCsv(_csv);
 			
 			Assert.AreEqual(1, dic.Count);
-			Assert.AreEqual(9, dic[0].Count);
+			Assert.AreEqual(10, dic[0].Count);
+			Assert.AreEqual("Ignored", dic[0]["Ignored"]);
 			Assert.AreEqual("text", dic[0]["String"]);
 			Assert.AreEqual("1", dic[0]["Int"]);
 			Assert.AreEqual("1.1", dic[0]["Float"]);
@@ -86,6 +90,7 @@ namespace GameLoversEditor.GoogleSheetImporter.Tests
 			var dic = CsvParser.ConvertCsv(_csv);
 			var result = CsvParser.DeserializeTo<MockClass>(dic[0]);
 
+			Assert.AreEqual(null, result.Ignored);
 			Assert.AreEqual("text", result.String);
 			Assert.AreEqual(1, result.Int);
 			Assert.AreEqual(1.1f, result.Float);
