@@ -40,8 +40,6 @@ namespace GameLovers.GoogleSheetImporter
 					continue;
 				}
 				
-				Debug.Log(field.Name + "  " + field.GetCustomAttributes(ignoreType, false).Length);
-				
 				var stringSerialized = "";
 				
 				if (dictionaryType.IsAssignableFrom(field.FieldType))
