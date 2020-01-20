@@ -104,7 +104,7 @@ namespace GameLovers.GoogleSheetImporter
 		/// </exception>
 		public static T[] ArrayParse<T>(string text)
 		{
-			const string match = @"(\w+\s*)*[^( \[* | \]* | \(* | \)* | \,* | *) | \{* | \}* ]";
+			const string match = @"([\w\-.@#%$€£]+\s*)*[^( \[* | \]* | \(* | \)* | \,*) | \{* | \}* ]";
 
 			var matches = Regex.Matches(text, match, RegexOptions.ExplicitCapture);
 			var ret = new T[matches.Count];

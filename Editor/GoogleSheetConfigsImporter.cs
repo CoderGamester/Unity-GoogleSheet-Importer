@@ -15,7 +15,7 @@ namespace GameLoversEditor.GoogleSheetImporter
 	/// types
 	/// </remarks>
 	public abstract class GoogleSheetConfigsImporter<TConfig, TScriptableObject> : IGoogleSheetImporter
-		where TConfig : IConfig
+		where TConfig : struct
 		where TScriptableObject : ScriptableObject, IConfigsContainer<TConfig>
 	{
 		/// <inheritdoc />

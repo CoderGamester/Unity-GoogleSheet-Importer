@@ -25,6 +25,24 @@ namespace GameLoversEditor.GoogleSheetImporter
 			_importers = GetAllImporters();
 		}
 		
+		[MenuItem("Tools/Select GoogleSheetImporter.asset")]
+		private static void SelectUiConfigs()
+		{
+			var assets = AssetDatabase.FindAssets($"t:{nameof(GoogleSheetImporter)}");
+			var scriptableObject = assets.Length > 0 ? 
+				AssetDatabase.LoadAssetAtPath<GoogleSheetImporter>(AssetDatabase.GUIDToAssetPath(assets[0])) :
+				ScriptableObject.CreateInstance<GoogleSheetImporter>();
+
+			if (assets.Length == 0)
+			{
+				AssetDatabase.CreateAsset(scriptableObject, $"Assets/{nameof(GoogleSheetImporter)}.asset");
+				AssetDatabase.SaveAssets();
+				AssetDatabase.Refresh();
+			}
+
+			Selection.activeObject = scriptableObject;
+		}
+		
 		[MenuItem("Tools/Import Google Sheet Data")]
 		private static void ImportAllGoogleSheetData()
 		{
