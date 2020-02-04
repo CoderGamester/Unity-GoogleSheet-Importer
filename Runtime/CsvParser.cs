@@ -21,9 +21,7 @@ namespace GameLovers.GoogleSheetImporter
 		public static T DeserializeTo<T>(Dictionary<string, string> data)
 		{
 			var type = typeof(T);
-			var dictionaryType = typeof(IDictionary);
 			var listType = typeof(IList);
-			var keyValueType = typeof(KeyValuePair<,>);
 			var ignoreType = typeof(ParseIgnoreAttribute);
 			var instance = Activator.CreateInstance(type);
 
@@ -42,19 +40,9 @@ namespace GameLovers.GoogleSheetImporter
 				
 				var stringSerialized = "";
 				
-				if (dictionaryType.IsAssignableFrom(field.FieldType))
-				{
-					stringSerialized = JsonConvert.SerializeObject(DictionaryParse<string, string>(data[field.Name]));
-				}
-				else if (listType.IsAssignableFrom(field.FieldType))
+				if (listType.IsAssignableFrom(field.FieldType))
 				{
 					stringSerialized = JsonConvert.SerializeObject(ArrayParse<string>(data[field.Name]));
-				}
-				else if(field.FieldType.IsGenericType && field.FieldType.GetGenericTypeDefinition() == keyValueType)
-				{
-					var pair = PairParse<string, string>(data[field.Name]);
-						
-					stringSerialized = $"{{\"Key\":\"{pair.Key}\",\"Value\":\"{pair.Value}\"}}";
 				}
 				else
 				{
