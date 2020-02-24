@@ -16,6 +16,17 @@ namespace GameLoversEditor.GoogleSheetImporter.Tests
 		{
 			MockValue
 		}
+		public struct MockKeyValuePair
+		{
+			public int Key;
+			public int Value;
+
+			public MockKeyValuePair(int key, int value)
+			{
+				Key = key;
+				Value = value;
+			}
+		}
 
 		public class MockClass
 		{
@@ -31,14 +42,13 @@ namespace GameLoversEditor.GoogleSheetImporter.Tests
 			public KeyValuePair<int,int> Pair;
 			public Dictionary<int,int> Dictionary;
 		}
-
-		private const string _csv = "Ignored,String,Int,Float,Double,Enum,Array,List,Pair,Dictionary\r\n" +
-		                            "Ignored,text,1,1.1,1.1,MockValue,\"1,2\",\"1,2\",\"1,2\",\"1,2\"";
 		
 		[Test]
 		public void ConvertCsv_Successfully()
 		{
-			var dic = CsvParser.ConvertCsv(_csv);
+			var csv = "Ignored,String,Int,Float,Double,Enum,Array,List,Pair,Dictionary\r\n" +
+			          "Ignored,text,1,1.1,1.1,MockValue,\"1,2\",\"1,2\",\"1:2\",\"1,2\"";
+			var dic = CsvParser.ConvertCsv(csv);
 			
 			Assert.AreEqual(1, dic.Count);
 			Assert.AreEqual(10, dic[0].Count);
@@ -50,7 +60,7 @@ namespace GameLoversEditor.GoogleSheetImporter.Tests
 			Assert.AreEqual("MockValue", dic[0]["Enum"]);
 			Assert.AreEqual("1,2", dic[0]["Array"]);
 			Assert.AreEqual("1,2", dic[0]["List"]);
-			Assert.AreEqual("1,2", dic[0]["Pair"]);
+			Assert.AreEqual("1:2", dic[0]["Pair"]);
 			Assert.AreEqual("1,2", dic[0]["Dictionary"]);
 		}
 
@@ -87,7 +97,9 @@ namespace GameLoversEditor.GoogleSheetImporter.Tests
 		[Test]
 		public void Deserialize_Successfully()
 		{
-			var dic = CsvParser.ConvertCsv(_csv);
+			var csv = "Ignored,String,Int,Float,Double,Enum,Array,List,Pair,Dictionary\r\n" +
+			          "Ignored,text,1,1.1,1.1,MockValue,\"1,2\",\"1,2\",\"1:2\",\"1,2\"";
+			var dic = CsvParser.ConvertCsv(csv);
 			var result = CsvParser.DeserializeTo<MockClass>(dic[0]);
 
 			Assert.AreEqual(null, result.Ignored);
@@ -149,6 +161,27 @@ namespace GameLoversEditor.GoogleSheetImporter.Tests
 		}
 
 		[Test]
+		public void ArrayParsePair_Successfully()
+		{
+			var result = CsvParser.ArrayParse<KeyValuePair<int,int>>("1:2,(3 < 4),[5 > 6],{7 = 8}");
+			var pairArray = new[]
+			{
+				new KeyValuePair<int,int>(1,2),
+				new KeyValuePair<int,int>(3,4),
+				new KeyValuePair<int,int>(5,6),
+				new KeyValuePair<int,int>(7,8), 
+			};
+			
+			Assert.AreEqual(pairArray, result);
+		}
+
+		[Test]
+		public void ArrayParsePair_ElementOddAmount_ThrowsException()
+		{
+			Assert.Throws<IndexOutOfRangeException>(() => CsvParser.ArrayParse<KeyValuePair<int,int>>("1:2,(3 < 4),5"));
+		}
+
+		[Test]
 		public void DictionaryParse_Successfully()
 		{
 			var result = CsvParser.DictionaryParse<int,int>("1,2,3,4");
@@ -163,20 +196,6 @@ namespace GameLoversEditor.GoogleSheetImporter.Tests
 		}
 
 		[Test]
-		public void PairParse_Successfully()
-		{
-			var result = CsvParser.PairParse<int, int>("1,2");
-			
-			Assert.AreEqual(new KeyValuePair<int, int>(1, 2), result);
-		}
-
-		[Test]
-		public void PairParse_OneElement_ThrowsException()
-		{
-			Assert.Throws<IndexOutOfRangeException>(() => CsvParser.PairParse<int, int>("1"));
-		}
-
-		[Test]
 		public void ParseInt_Successfully()
 		{
 			var result = CsvParser.Parse<int>("1");
@@ -188,6 +207,24 @@ namespace GameLoversEditor.GoogleSheetImporter.Tests
 		public void ParseInt_WithFloat_ThrowsException()
 		{
 			Assert.Throws<FormatException>(() => CsvParser.Parse<int>("1.1f"));
+		}
+
+		[Test]
+		public void ParsePair_Successfully()
+		{
+			var pair1 = CsvParser.Parse<KeyValuePair<int, int>>("1:2");
+			var pair2 = CsvParser.Parse<MockKeyValuePair>("1:2");
+			var result1 = new KeyValuePair<int, int>(1, 2);
+			var result2 = new MockKeyValuePair(1, 2);
+			
+			Assert.AreEqual(result1, pair1);
+			Assert.AreEqual(result2, pair2);
+		}
+
+		[Test]
+		public void ParsePair_OneElement_ThrowsException()
+		{
+			Assert.Throws<IndexOutOfRangeException>(() => CsvParser.Parse<KeyValuePair<int, int>>("1"));
 		}
 	}
 }
