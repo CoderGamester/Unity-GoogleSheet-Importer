@@ -2,12 +2,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using UnityEngine;
-using Object = UnityEngine.Object;
 
 // ReSharper disable once CheckNamespace
 
@@ -18,6 +15,9 @@ namespace GameLovers.GoogleSheetImporter
 	/// </summary>
 	public static class CsvParser
 	{
+		private static readonly char[] _pairSplitChars = new[] {',', ':', '<', '>', '='};
+		private static readonly char[] _arraySplitChars = new[] {',', '(', ')', '[', ']', '{', '}'};
+
 		/// <summary>
 		/// Deserializes the given CSV <paramref name="data"/> cell values to an object of the given <typeparamref name="T"/> type
 		/// </summary>
@@ -46,17 +46,17 @@ namespace GameLovers.GoogleSheetImporter
 				
 				if (field.FieldType.IsArray)
 				{
-					stringSerialized = JsonConvert.SerializeObject(ArrayParse(data[field.Name], field.FieldType.GetElementType()));
+					stringSerialized = JsonConvert.SerializeObject(ArrayParse(data[field.Name], null, field.FieldType.GetElementType()));
 				}
 				else if (listType.IsAssignableFrom(field.FieldType))
 				{
-					stringSerialized = JsonConvert.SerializeObject(ArrayParse(data[field.Name], field.FieldType.GenericTypeArguments[0]));
+					stringSerialized = JsonConvert.SerializeObject(ArrayParse(data[field.Name], null, field.FieldType.GenericTypeArguments[0]));
 				}
 				else if (dictionaryType.IsAssignableFrom(field.FieldType))
 				{
 					var types = field.FieldType.GenericTypeArguments;
 					
-					stringSerialized = JsonConvert.SerializeObject(DictionaryParse(data[field.Name], types[0], types[1]));
+					stringSerialized = JsonConvert.SerializeObject(DictionaryParse(data[field.Name], null, types[0], types[1]));
 				}
 				else if (IsKeyValuePairType(field.FieldType))
 				{
@@ -110,20 +110,7 @@ namespace GameLovers.GoogleSheetImporter
 		/// </exception>
 		public static List<T> ArrayParse<T>(string text)
 		{
-			var split = text.Split(',', '(', ')', '[', ']', '{', '}');
-			var ret = new List<T>(split.Length);
-
-			for (var i = 0; i < split.Length; i++)
-			{
-				if (string.IsNullOrEmpty(split[i]))
-				{
-					continue;
-				}
-				
-				ret.Add(Parse<T>(split[i]));
-			}
-
-			return ret;
+			return ArrayParse(text, new List<T>(), typeof(T)) as List<T>;
 		}
 
 		/// <summary>
@@ -141,24 +128,7 @@ namespace GameLovers.GoogleSheetImporter
 		/// </exception>
 		public static Dictionary<TKey, TValue> DictionaryParse<TKey, TValue>(string text)
 		{
-			var items = ArrayParse<string>(text);
-			var dictionary = new Dictionary<TKey, TValue>();
-
-			if (items.Count % 2 == 1)
-			{
-				throw new IndexOutOfRangeException($"Dictionary must have an even amount of values and the following text" +
-				                                   $"has {items.Count.ToString()} values. \nText:{text}");
-			}
-				
-			for(var i = 0; i < items.Count; i += 2)
-			{
-				var key = Parse<TKey>(items[i]);
-				var value = Parse<TValue>(items[i + 1]);
-					
-				dictionary.Add(key, value);
-			}
-
-			return dictionary;
+			return DictionaryParse(text, new Dictionary<TKey, TValue>(), typeof(TKey), typeof(TValue)) as Dictionary<TKey, TValue>;
 		}
 
 		/// <summary>
@@ -172,42 +142,56 @@ namespace GameLovers.GoogleSheetImporter
 			return (T) Parse(text, typeof(T));
 		}
 
-		private static List<object> ArrayParse(string text, Type type)
+		private static object ArrayParse(string text, IList list, Type type)
 		{
-			var split = text.Split(',', '(', ')', '[', ']', '{', '}');
-			var ret = new List<object>(split.Length);
+			var split = text.Split(_arraySplitChars);
 
-			for (var i = 0; i < split.Length; i++)
+			list = list ?? new List<dynamic>();
+
+			foreach (var value in split)
 			{
-				if (string.IsNullOrEmpty(split[i]))
+				if (string.IsNullOrEmpty(value))
 				{
 					continue;
 				}
 				
-				ret.Add(Parse(split[i], type));
+				list.Add(Parse(value, type));
 			}
 
-			return ret;
+			return list;
 		}
 
-		private static object DictionaryParse(string text, Type keyType, Type valueType)
+		private static object DictionaryParse(string text, IDictionary dictionary, Type keyType, Type valueType)
 		{
 			var items = ArrayParse<string>(text);
-			//var split = items[0].Split(',', ':', '<', '>', '=');
-			var dictionary = new Dictionary<dynamic, dynamic>();
+			
+			dictionary = dictionary ?? new Dictionary<dynamic, dynamic>();
 
-			if (items.Count % 2 == 1)
+			if (items[0].IndexOfAny(_pairSplitChars) != -1)
+			{
+				foreach (var item in items)
+				{
+					var split = item.Split(_pairSplitChars);
+					var key = Parse(split[0], keyType);
+					var value = Parse(split[1], valueType);
+					
+					dictionary.Add(key, value);
+				}
+			}
+			else if (items.Count % 2 == 1)
 			{
 				throw new IndexOutOfRangeException($"Dictionary must have an even amount of values and the following text" +
 				                                   $"has {items.Count.ToString()} values. \nText:{text}");
 			}
-				
-			for(var i = 0; i < items.Count; i += 2)
+			else
 			{
-				var key = Parse(items[i], keyType);
-				var value = Parse(items[i + 1], valueType);
+				for(var i = 0; i < items.Count; i += 2)
+				{
+					var key = Parse(items[i], keyType);
+					var value = Parse(items[i + 1], valueType);
 					
-				dictionary.Add(key, value);
+					dictionary.Add(key, value);
+				}
 			}
 
 			return dictionary;
@@ -263,7 +247,7 @@ namespace GameLovers.GoogleSheetImporter
 
 		private static string SerializedKeyValuePair(string text)
 		{
-			var split = text.Split(',', ':', '<', '>', '=');
+			var split = text.Split(_pairSplitChars);
 
 			return $"{{\"Key\":\"{split[0].Trim()}\",\"Value\":\"{split[1].Trim()}\"}}";
 		}

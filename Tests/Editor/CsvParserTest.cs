@@ -190,6 +190,14 @@ namespace GameLoversEditor.GoogleSheetImporter.Tests
 		}
 
 		[Test]
+		public void DictionaryParsePair_Successfully()
+		{
+			var result = CsvParser.DictionaryParse<int,int>("1:2,(3>4)");
+			
+			Assert.AreEqual(new Dictionary<int, int> {{1,2},{3,4}} , result);
+		}
+
+		[Test]
 		public void DictionaryParse_ElementOddAmount_ThrowsException()
 		{
 			Assert.Throws<IndexOutOfRangeException>(() => CsvParser.DictionaryParse<int,int>("1,2,3"));
