@@ -15,15 +15,17 @@ namespace GameLovers.GoogleSheetImporter
 	/// </summary>
 	public static class CsvParser
 	{
+		private static readonly char[] _pairSplitChars = new[] {',', ':', '<', '>', '='};
+		private static readonly char[] _arraySplitChars = new[] {',', '(', ')', '[', ']', '{', '}'};
+
 		/// <summary>
 		/// Deserializes the given CSV <paramref name="data"/> cell values to an object of the given <typeparamref name="T"/> type
 		/// </summary>
 		public static T DeserializeTo<T>(Dictionary<string, string> data)
 		{
 			var type = typeof(T);
-			var dictionaryType = typeof(IDictionary);
 			var listType = typeof(IList);
-			var keyValueType = typeof(KeyValuePair<,>);
+			var dictionaryType = typeof(IDictionary);
 			var ignoreType = typeof(ParseIgnoreAttribute);
 			var instance = Activator.CreateInstance(type);
 
@@ -42,19 +44,23 @@ namespace GameLovers.GoogleSheetImporter
 				
 				var stringSerialized = "";
 				
-				if (dictionaryType.IsAssignableFrom(field.FieldType))
+				if (field.FieldType.IsArray)
 				{
-					stringSerialized = JsonConvert.SerializeObject(DictionaryParse<string, string>(data[field.Name]));
+					stringSerialized = JsonConvert.SerializeObject(ArrayParse(data[field.Name], null, field.FieldType.GetElementType()));
 				}
 				else if (listType.IsAssignableFrom(field.FieldType))
 				{
-					stringSerialized = JsonConvert.SerializeObject(ArrayParse<string>(data[field.Name]));
+					stringSerialized = JsonConvert.SerializeObject(ArrayParse(data[field.Name], null, field.FieldType.GenericTypeArguments[0]));
 				}
-				else if(field.FieldType.IsGenericType && field.FieldType.GetGenericTypeDefinition() == keyValueType)
+				else if (dictionaryType.IsAssignableFrom(field.FieldType))
 				{
-					var pair = PairParse<string, string>(data[field.Name]);
-						
-					stringSerialized = $"{{\"Key\":\"{pair.Key}\",\"Value\":\"{pair.Value}\"}}";
+					var types = field.FieldType.GenericTypeArguments;
+					
+					stringSerialized = JsonConvert.SerializeObject(DictionaryParse(data[field.Name], null, types[0], types[1]));
+				}
+				else if (IsKeyValuePairType(field.FieldType))
+				{
+					stringSerialized = SerializedKeyValuePair(data[field.Name]);
 				}
 				else
 				{
@@ -102,19 +108,9 @@ namespace GameLovers.GoogleSheetImporter
 		/// <exception cref="FormatException">
 		/// Thrown if the given <paramref name="text"/> is not in the given <typeparamref name="T"/> type format
 		/// </exception>
-		public static T[] ArrayParse<T>(string text)
+		public static List<T> ArrayParse<T>(string text)
 		{
-			const string match = @"([\w\-.@#%$€£]+\s*)*[^( \[* | \]* | \(* | \)* | \,*) | \{* | \}* ]";
-
-			var matches = Regex.Matches(text, match, RegexOptions.ExplicitCapture);
-			var ret = new T[matches.Count];
-
-			for (int i = 0; i < ret.Length; i++)
-			{
-				ret[i] = Parse<T>(matches[i].Groups[0].Value);
-			}
-
-			return ret;
+			return ArrayParse(text, new List<T>(), typeof(T)) as List<T>;
 		}
 
 		/// <summary>
@@ -132,48 +128,7 @@ namespace GameLovers.GoogleSheetImporter
 		/// </exception>
 		public static Dictionary<TKey, TValue> DictionaryParse<TKey, TValue>(string text)
 		{
-			var items = ArrayParse<string>(text);
-			var dictionary = new Dictionary<TKey, TValue>();
-
-			if (items.Length % 2 == 1)
-			{
-				throw new IndexOutOfRangeException($"Dictionary must have an even amount of values and the following text" +
-				                                   $"has {items.Length.ToString()} values. \nText:{text}");
-			}
-				
-			for(var i = 0; i < items.Length; i += 2)
-			{
-				var key = Parse<TKey>(items[i]);
-				var value = Parse<TValue>(items[i + 1]);
-					
-				dictionary.Add(key, value);
-			}
-
-			return dictionary;
-		}
-
-		/// <summary>
-		/// Parses the given <paramref name="text"/> into a <seealso cref="KeyValuePair{TKey, TValue}"/> type.
-		/// A text is in <seealso cref="KeyValuePair{TKey, TValue}"/> type format if follows the same rules
-		/// of <seealso cref="ArrayParse{T}"/> and has 2 elements inside
-		/// </summary>
-		/// <exception cref="IndexOutOfRangeException">
-		/// Thrown if the given <paramref name="text"/> is not in <seealso cref="KeyValuePair{TKey, TValue}"/> type format
-		/// </exception>
-		/// <exception cref="FormatException">
-		/// Thrown if the given <paramref name="text"/> is not in the given <typeparamref name="TKey"/> or <typeparamref name="TValue"/> type format
-		/// </exception>
-		public static KeyValuePair<TKey, TValue> PairParse<TKey, TValue>(string text)
-		{
-			var items = ArrayParse<string>(text);
-
-			if (items.Length != 2)
-			{
-				throw new IndexOutOfRangeException($"The text {text} is not convertible to KeyValuePair type" +
-				                                   "because it has more or less than 2 elements inside");
-			}
-			
-			return new KeyValuePair<TKey, TValue>(Parse<TKey>(items[0]), Parse<TValue>(items[1]));
+			return DictionaryParse(text, new Dictionary<TKey, TValue>(), typeof(TKey), typeof(TValue)) as Dictionary<TKey, TValue>;
 		}
 
 		/// <summary>
@@ -187,6 +142,61 @@ namespace GameLovers.GoogleSheetImporter
 			return (T) Parse(text, typeof(T));
 		}
 
+		private static object ArrayParse(string text, IList list, Type type)
+		{
+			var split = text.Split(_arraySplitChars);
+
+			list = list ?? new List<dynamic>();
+
+			foreach (var value in split)
+			{
+				if (string.IsNullOrEmpty(value))
+				{
+					continue;
+				}
+				
+				list.Add(Parse(value, type));
+			}
+
+			return list;
+		}
+
+		private static object DictionaryParse(string text, IDictionary dictionary, Type keyType, Type valueType)
+		{
+			var items = ArrayParse<string>(text);
+			
+			dictionary = dictionary ?? new Dictionary<dynamic, dynamic>();
+
+			if (items[0].IndexOfAny(_pairSplitChars) != -1)
+			{
+				foreach (var item in items)
+				{
+					var split = item.Split(_pairSplitChars);
+					var key = Parse(split[0], keyType);
+					var value = Parse(split[1], valueType);
+					
+					dictionary.Add(key, value);
+				}
+			}
+			else if (items.Count % 2 == 1)
+			{
+				throw new IndexOutOfRangeException($"Dictionary must have an even amount of values and the following text" +
+				                                   $"has {items.Count.ToString()} values. \nText:{text}");
+			}
+			else
+			{
+				for(var i = 0; i < items.Count; i += 2)
+				{
+					var key = Parse(items[i], keyType);
+					var value = Parse(items[i + 1], valueType);
+					
+					dictionary.Add(key, value);
+				}
+			}
+
+			return dictionary;
+		}
+
 		private static object Parse(string text, Type type)
 		{
 			if (type == typeof(string))
@@ -197,6 +207,11 @@ namespace GameLovers.GoogleSheetImporter
 			if (type.IsEnum)
 			{
 				return Enum.Parse(type, text);
+			}
+
+			if (IsKeyValuePairType(type))
+			{
+				return JsonConvert.DeserializeObject(SerializedKeyValuePair(text), type);
 			}
 			
 			//Handling Nullable types i.e, int?, double?, bool? .. etc
@@ -228,6 +243,31 @@ namespace GameLovers.GoogleSheetImporter
 			}
 
 			return ret;
+		}
+
+		private static string SerializedKeyValuePair(string text)
+		{
+			var split = text.Split(_pairSplitChars);
+
+			return $"{{\"Key\":\"{split[0].Trim()}\",\"Value\":\"{split[1].Trim()}\"}}";
+		}
+
+		// TODO: Refactor this after Unity 2020.1 release. Unity will allow Generic Type Serialization....FINALLY \o/
+		private static bool IsKeyValuePairType(Type type)
+		{
+			if (!type.IsValueType)
+			{
+				return false;
+			}
+
+			if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(KeyValuePair<,>))
+			{
+				return true;
+			}
+
+			var fields = type.GetFields();
+
+			return fields.Length == 2 && fields[0].Name == "Key" && fields[1].Name == "Value";
 		}
 	}
 }
