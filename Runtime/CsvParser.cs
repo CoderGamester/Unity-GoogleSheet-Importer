@@ -15,7 +15,7 @@ namespace GameLovers.GoogleSheetImporter
 	/// </summary>
 	public static class CsvParser
 	{
-		private static readonly char[] _pairSplitChars = new[] {',', ':', '<', '>', '='};
+		private static readonly char[] _pairSplitChars = new[] {':', '<', '>', '='};
 		private static readonly char[] _arraySplitChars = new[] {',', '(', ')', '[', ']', '{', '}'};
 
 		/// <summary>
@@ -113,36 +113,8 @@ namespace GameLovers.GoogleSheetImporter
 			return ArrayParse(text, new List<T>(), typeof(T)) as List<T>;
 		}
 
-		/// <summary>
-		/// Parses the given <paramref name="text"/> into a <seealso cref="Dictionary{TKey, TValue}"/> type.
-		/// A text is in <seealso cref="Dictionary{TKey, TValue}"/> type format if follows the same rules
-		/// of <seealso cref="ArrayParse{T}"/> and has at least 2 elements inside
-		/// If the given <paramref name="text"/> is not in an <seealso cref="Dictionary{TKey, TValue}"/> type format,
-		/// it will return an empty dictionary
-		/// </summary>
-		/// <exception cref="FormatException">
-		/// Thrown if the given <paramref name="text"/> is not in the given <typeparamref name="TKey"/> or <typeparamref name="TValue"/> type format
-		/// </exception>
-		/// <exception cref="IndexOutOfRangeException">
-		/// Thrown if the given <paramref name="text"/> has a odd amount of values to pair. Must always be an even amount of values
-		/// </exception>
-		public static Dictionary<TKey, TValue> DictionaryParse<TKey, TValue>(string text)
-		{
-			return DictionaryParse(text, new Dictionary<TKey, TValue>(), typeof(TKey), typeof(TValue)) as Dictionary<TKey, TValue>;
-		}
-
-		/// <summary>
-		/// Parses the given <paramref name="text"/> to the given <typeparamref name="T"/> type
-		/// </summary>
-		/// <exception cref="FormatException">
-		/// Thrown if the given <paramref name="text"/> is not in the given <typeparamref name="T"/> type format
-		/// </exception>
-		public static T Parse<T>(string text)
-		{
-			return (T) Parse(text, typeof(T));
-		}
-
-		private static object ArrayParse(string text, IList list, Type type)
+		/// <inheritdoc cref="ArrayParse{T}" />
+		public static object ArrayParse(string text, IList list, Type type)
 		{
 			var split = text.Split(_arraySplitChars);
 
@@ -161,6 +133,25 @@ namespace GameLovers.GoogleSheetImporter
 			return list;
 		}
 
+		/// <summary>
+		/// Parses the given <paramref name="text"/> into a <seealso cref="Dictionary{TKey, TValue}"/> type.
+		/// A text is in <seealso cref="Dictionary{TKey, TValue}"/> type format if follows the same rules
+		/// of <seealso cref="ArrayParse{T}"/> and has at least 2 elements inside
+		/// If the given <paramref name="text"/> is not in an <seealso cref="Dictionary{TKey, TValue}"/> type format,
+		/// it will return an empty dictionary
+		/// </summary>
+		/// <exception cref="FormatException">
+		/// Thrown if the given <paramref name="text"/> is not in the given <typeparamref name="TKey"/> or <typeparamref name="TValue"/> type format
+		/// </exception>
+		/// <exception cref="IndexOutOfRangeException">
+		/// Thrown if the given <paramref name="text"/> has a odd amount of values to pair. Must always be an even amount of values
+		/// </exception>
+		public static Dictionary<TKey, TValue> DictionaryParse<TKey, TValue>(string text)
+		{
+			return DictionaryParse(text, new Dictionary<TKey, TValue>(), typeof(TKey), typeof(TValue)) as Dictionary<TKey, TValue>;
+		}
+
+		/// <inheritdoc cref="DictionaryParse{TKey,TValue}" />
 		private static object DictionaryParse(string text, IDictionary dictionary, Type keyType, Type valueType)
 		{
 			var items = ArrayParse<string>(text);
@@ -197,8 +188,22 @@ namespace GameLovers.GoogleSheetImporter
 			return dictionary;
 		}
 
-		private static object Parse(string text, Type type)
+		/// <summary>
+		/// Parses the given <paramref name="text"/> to the given <typeparamref name="T"/> type
+		/// </summary>
+		/// <exception cref="FormatException">
+		/// Thrown if the given <paramref name="text"/> is not in the given <typeparamref name="T"/> type format
+		/// </exception>
+		public static T Parse<T>(string text)
 		{
+			return (T) Parse(text, typeof(T));
+		}
+
+		/// <inheritdoc cref="Parse{T}" />
+		public static object Parse(string text, Type type)
+		{
+			text = text.Trim();
+			
 			if (type == typeof(string))
 			{
 				return text;

@@ -4,7 +4,15 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [0.4.0] - 2020-01-20
+## [0.5.0] - 2020-02-26
+
+- Added the *GoogleSheetSingleConfigImporter* to import single unique configs
+- Improved the parsing to allow to parse by giving the type as a parameter
+
+**Fixed**:
+- Fixed bug where KeyValuePair types values were not string trimmed
+
+## [0.4.0] - 2020-02-25
 
 - Added the possibility to parse CsV pairs (ex: 1:2,2<3,3>4) to dictionaries and value pair types
 - Improved the parsing performance
