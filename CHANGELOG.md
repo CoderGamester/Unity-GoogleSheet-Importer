@@ -4,8 +4,14 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2020-03-07
+
+- Updated the package *com.gamelovers.configscontainer* to version 0.5.0
+- Added package dependency to *com.gamelovers.configscontainer* version 1.1.2
+
 ## [0.5.0] - 2020-02-26
 
+- Updated the package *com.gamelovers.configscontainer* to version 0.4.0
 - Added the *GoogleSheetSingleConfigImporter* to import single unique configs
 - Improved the parsing to allow to parse by giving the type as a parameter
 
@@ -14,6 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [0.4.0] - 2020-02-25
 
+- Updated the package *com.gamelovers.configscontainer* to version 0.3.0
 - Added the possibility to parse CsV pairs (ex: 1:2,2<3,3>4) to dictionaries and value pair types
 - Improved the parsing performance
 
