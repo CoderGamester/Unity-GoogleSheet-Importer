@@ -74,9 +74,10 @@ namespace GameLoversEditor.GoogleSheetImporter
 			}
 
 			var tool = (GoogleSheetImporter) target;
-			var guiContent = new GUIContent("Spreadsheet ID replace (optional)", 
+			var guiContent = new GUIContent("Spreadsheet ID (optional)", 
 				"(Optional) Put the Google Spreadsheet Id to replace from the one set in SheetImporter. " +
-				"Will use the one set in the SheetImporter by default if not set or empty");
+				"Will use the one set in the SheetImporter by default if not set or empty. " +
+				"Use this option if you duplicate the Google Sheet file for testing purposes.");
 			
 			tool.ReplaceSpreadsheetId = EditorGUILayout.TextField(guiContent, tool.ReplaceSpreadsheetId);
 			

@@ -12,7 +12,9 @@ namespace GameLoversEditor.GoogleSheetImporter
 	/// <inheritdoc />
 	/// <remarks>
 	/// Generic implementation of an importer to load multiple <typeparamref name="TConfig"/> configs into one
-	/// <typeparamref name="TScriptableObject"/>
+	/// <typeparamref name="TScriptableObject"/>.
+	/// It will import 1 row per data entry. This means each row will represent 1 <typeparamref name="TConfig"/> entry
+	/// and import multiple <typeparamref name="TConfig"/>
 	/// </remarks>
 	public abstract class GoogleSheetConfigsImporter<TConfig, TScriptableObject> : IGoogleSheetImporter
 		where TConfig : struct
@@ -57,7 +59,9 @@ namespace GameLoversEditor.GoogleSheetImporter
 	/// <inheritdoc />
 	/// <remarks>
 	/// Generic implementation of an importer to load a single <typeparamref name="TConfig"/> config into one
-	/// <typeparamref name="TScriptableObject"/>
+	/// <typeparamref name="TScriptableObject"/>.
+	/// It will import 1 entire sheet into one single<typeparamref name="TConfig"/>. This means each row will match
+	/// a different field of the <typeparamref name="TConfig"/> represented by a Key/Value pair.
 	/// </remarks>
 	public abstract class GoogleSheetSingleConfigImporter<TConfig, TScriptableObject> : IGoogleSheetImporter
 		where TConfig : struct
