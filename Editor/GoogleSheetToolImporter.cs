@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading.Tasks;
 using GameLovers.GoogleSheetImporter;
 using UnityEditor;
 using UnityEditor.Callbacks;
 using UnityEngine;
 using UnityEngine.Networking;
-using GameLovers.AsyncAwait;
 using Debug = UnityEngine.Debug;
 
 // ReSharper disable once CheckNamespace
@@ -148,7 +148,7 @@ namespace GameLoversEditor.GoogleSheetImporter
 			var finalUrl = string.IsNullOrWhiteSpace(spreadsheetId) ? url : url.Remove(indexStart, indexCount).Insert(indexStart, spreadsheetId);
 			var request = UnityWebRequest.Get(finalUrl);
 
-			await request.SendWebRequest();
+			await AsyncOperation(request.SendWebRequest());
 
 			if (request.isHttpError || request.isNetworkError)
 			{
@@ -167,6 +167,14 @@ namespace GameLoversEditor.GoogleSheetImporter
 			}
 			
 			Debug.Log($"Finished importing google sheet data from {data.Type.Name}");
+		}
+
+		private static async Task AsyncOperation(AsyncOperation operation)
+		{
+			while (!operation.isDone)
+			{
+				await Task.Delay(100);
+			}
 		}
 
 		private struct ImportData

@@ -4,7 +4,15 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [0.5.3] - 2020-03-07
+## [0.6.0] - 2020-07-28
+
+- Added *ConfigsProvider* to provide the loaded google sheet configs
+- Added *IConfigsContainer* to provide the interface to maintain the loaded google sheet configs
+
+**Changed**:
+- Removed the dependency to the *com.gamelovers.configscontainer* & *com.gamelovers.asyncawait* package
+
+## [0.5.3] - 2020-04-25
 
 - Updated the package *com.gamelovers.configscontainer* to version 0.7.0
 - Updated *GoogleSheetImporter* documentation
@@ -35,7 +43,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Improved the parsing performance
 
 **Changed**:
-
 - Now generic types have their values properly parsed to their value instead of paring always to string. This will allow to avoid unnecessary later conversion on the importers.
 
 ## [0.3.0] - 2020-01-20
