@@ -33,9 +33,29 @@ namespace GameLovers.GoogleSheetImporter
 		/// </summary>
 		IReadOnlyDictionary<int, T> GetConfigsDictionary<T>();
 	}
+
+	/// <inheritdoc />
+	/// <remarks>
+	/// Extends the <see cref="IConfigsProvider"/> behaviour by allowing it to add configs to the provider
+	/// </remarks>
+	public interface IConfigsAdder : IConfigsProvider
+	{
+		/// <summary>
+		/// Adds the given unique single <paramref name="config"/> to the container.
+		/// Use the <seealso cref="IConfigsProvider.GetSingleConfig{T}"/> to retrieve it.
+		/// </summary>
+		void AddSingletonConfig<T>(T config);
+
+		/// <summary>
+		/// Adds the given <paramref name="configList"/> to the container.
+		/// The configuration will use the given <paramref name="referenceIdResolver"/> to map each config to it's defined id.
+		/// Use the <seealso cref="IConfigsProvider.GetConfig{T}"/> to retrieve it.
+		/// </summary>
+		void AddConfigs<T>(Func<T, int> referenceIdResolver, IList<T> configList) where T : struct;
+	}
 	
 	/// <inheritdoc />
-	public class ConfigsProvider : IConfigsProvider
+	public class ConfigsProvider : IConfigsAdder
 	{
 		private const int _singleConfigId = 0;
 		
@@ -65,20 +85,13 @@ namespace GameLovers.GoogleSheetImporter
 			return _configs[typeof(T)] as IReadOnlyDictionary<int, T>;
 		}
 
-		/// <summary>
-		/// Adds the given unique single <paramref name="config"/> to the container.
-		/// Use the <seealso cref="GetSingletonConfig{T}"/> to retrieve it.
-		/// </summary>
+		/// <inheritdoc />
 		public void AddSingletonConfig<T>(T config)
 		{
 			_configs.Add(typeof(T), new ReadOnlyDictionary<int, T>(new Dictionary<int, T> {{ _singleConfigId, config }}));
 		}
 
-		/// <summary>
-		/// Adds the given <paramref name="configList"/> to the container.
-		/// The configuration will use the given <paramref name="referenceIdResolver"/> to map each config to it's defined id.
-		/// Use the <seealso cref="GetConfig{T}"/> to retrieve it.
-		/// </summary>
+		/// <inheritdoc />
 		public void AddConfigs<T>(Func<T, int> referenceIdResolver, IList<T> configList) where T : struct
 		{
 			var dictionary = new Dictionary<int, T>();
