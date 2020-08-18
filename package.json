@@ -1,11 +1,11 @@
 {
   "name": "com.gamelovers.googlesheetimporter",
   "displayName": "GoogleSheet Importer",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "unity": "2019.3",
   "description": "This package provides a tool to import GoogleSheet data into ScriptableObject persistent config data.\n\nTo help configure the GoogleSheet Import data you need to create a configuration ScriptableObject by:\n- Right Click on the Project View > Create > ScriptableObjects > Editor > GoogleSheetImporter.\n- You can import all the GoogleSheet data without a ScriptableObject by clicking in Tools > Import Google Sheet Data",
   "type": "tool",
   "dependencies": {
-    "com.unity.nuget.newtonsoft-json": "2.0.0-preview"
+    "com.unity.nuget.newtonsoft-json": "2.0.0"
   }
 }
