@@ -4,6 +4,10 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.6.2] - 2020-09-24
+
+- Added Importers Example
+
 ## [0.6.1] - 2020-08-18
 
 - Added *IConfigsAdder* interface to separate the contract behaviour when an object wants to add configs without needing to rely on the *ConfigsProvider*
