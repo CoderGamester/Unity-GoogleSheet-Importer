@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using UnityEngine;
@@ -25,8 +26,6 @@ namespace GameLovers.GoogleSheetImporter
 		public static T DeserializeTo<T>(Dictionary<string, string> data)
 		{
 			var type = typeof(T);
-			var listType = typeof(IList);
-			var dictionaryType = typeof(IDictionary);
 			var ignoreType = typeof(ParseIgnoreAttribute);
 			var instance = Activator.CreateInstance(type);
 
@@ -34,7 +33,6 @@ namespace GameLovers.GoogleSheetImporter
 			{
 				if (!data.ContainsKey(field.Name))
 				{
-					Debug.LogWarning($"The data does not contain the field {field.Name} data for the object of {type} type");
 					continue;
 				}
 
@@ -43,35 +41,41 @@ namespace GameLovers.GoogleSheetImporter
 					continue;
 				}
 				
-				var stringSerialized = "";
-				
-				if (field.FieldType.IsArray)
-				{
-					stringSerialized = JsonConvert.SerializeObject(ArrayParse(data[field.Name], null, field.FieldType.GetElementType()));
-				}
-				else if (listType.IsAssignableFrom(field.FieldType))
-				{
-					stringSerialized = JsonConvert.SerializeObject(ArrayParse(data[field.Name], null, field.FieldType.GenericTypeArguments[0]));
-				}
-				else if (dictionaryType.IsAssignableFrom(field.FieldType))
-				{
-					var types = field.FieldType.GenericTypeArguments;
-					
-					stringSerialized = JsonConvert.SerializeObject(DictionaryParse(data[field.Name], null, types[0], types[1]));
-				}
-				else if (IsKeyValuePairType(field.FieldType))
-				{
-					stringSerialized = SerializedKeyValuePair(data[field.Name]);
-				}
-				else
-				{
-					stringSerialized = $"\"{data[field.Name]}\"";
-				}
+				var stringSerialized = GetStringSerialized(field, data[field.Name]);
 				
 				field.SetValue(instance, JsonConvert.DeserializeObject(stringSerialized, field.FieldType));
 			}
 
 			return (T) instance;
+		}
+
+		/// <summary>
+		/// Requests the given <paramref name="data"/> value in a serializable format to fill the given <paramref name="field"/>
+		/// </summary>
+		public static string GetStringSerialized(FieldInfo field, string data)
+		{
+			var listType = typeof(IList);
+			var dictionaryType = typeof(IDictionary);
+			
+			if (field.FieldType.IsArray)
+			{
+				return JsonConvert.SerializeObject(ArrayParse(data, null, field.FieldType.GetElementType()));
+			}
+			if (listType.IsAssignableFrom(field.FieldType))
+			{
+				return JsonConvert.SerializeObject(ArrayParse(data, null, field.FieldType.GenericTypeArguments[0]));
+			}
+			if (dictionaryType.IsAssignableFrom(field.FieldType))
+			{
+				var types = field.FieldType.GenericTypeArguments;
+					
+				return JsonConvert.SerializeObject(DictionaryParse(data, null, types[0], types[1]));
+			}
+			if (IsKeyValuePairType(field.FieldType))
+			{
+				return SerializedKeyValuePair(data);
+			}
+			return $"\"{data}\"";
 		}
 		
 		/// <summary>
