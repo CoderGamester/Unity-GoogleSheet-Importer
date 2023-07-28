@@ -26,7 +26,6 @@ namespace GameLoversEditor.GoogleSheetImporter
 		{
 			var type = typeof(TScriptableObject);
 			var assets = AssetDatabase.FindAssets($"t:{type.Name}");
-			var configs = new List<TConfig>();
 			var scriptableObject = assets.Length > 0 ? 
 				AssetDatabase.LoadAssetAtPath<TScriptableObject>(AssetDatabase.GUIDToAssetPath(assets[0])) :
 				ScriptableObject.CreateInstance<TScriptableObject>();
@@ -35,16 +34,15 @@ namespace GameLoversEditor.GoogleSheetImporter
 			{
 				AssetDatabase.CreateAsset(scriptableObject, $"Assets/{type.Name}.asset");
 			}
+
+			scriptableObject.Configs.Clear();
 			
 			foreach (var row in data)
 			{
-				configs.Add(Deserialize(row));
+				scriptableObject.Configs.Add(Deserialize(row));
 			}
-
-			scriptableObject.Configs = configs;
 			
 			EditorUtility.SetDirty(scriptableObject);
-			OnImportComplete(scriptableObject);
 		}
 
 		/// <summary>
@@ -54,11 +52,6 @@ namespace GameLoversEditor.GoogleSheetImporter
 		{
 			return CsvParser.DeserializeTo<TConfig>(data);
 		}
-		
-		/// <summary>
-		/// Override this method to have your own post import proccess
-		/// </summary>
-		protected virtual void OnImportComplete(TScriptableObject scriptableObject) { }
 	}
 	
 	/// <inheritdoc />
@@ -92,17 +85,11 @@ namespace GameLoversEditor.GoogleSheetImporter
 			scriptableObject.Config = Deserialize(data);
 			
 			EditorUtility.SetDirty(scriptableObject);
-			OnImportComplete(scriptableObject);
 		}
 
 		/// <summary>
 		/// Override this method to have your own deserialization of the given <paramref name="data"/>
 		/// </summary>
 		protected abstract TConfig Deserialize(List<Dictionary<string, string>> data);
-		
-		/// <summary>
-		/// Override this method to have your own post import proccess
-		/// </summary>
-		protected virtual void OnImportComplete(TScriptableObject scriptableObject) { }
 	}
 }
