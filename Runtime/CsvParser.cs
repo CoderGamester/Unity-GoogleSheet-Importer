@@ -15,7 +15,6 @@ namespace GameLovers.GoogleSheetImporter
 	/// </summary>
 	public static class CsvParser
 	{
-		private const char _ignoreColumnChar = '$';
 		private static readonly char[] _pairSplitChars = new[] {':', '<', '>', '='};
 		private static readonly char[] _arraySplitChars = new[] {',', '(', ')', '[', ']', '{', '}'};
 
@@ -92,11 +91,6 @@ namespace GameLovers.GoogleSheetImporter
 
 				for (var j = 0; j < headlines.Length; j++)
 				{
-					if (headlines[j][0] == _ignoreColumnChar)
-					{
-						continue;
-					}
-					
 					dictionary.Add(headlines[j], values[j].Trim());
 				}
 				
@@ -263,6 +257,7 @@ namespace GameLovers.GoogleSheetImporter
 			return $"{{\"Key\":\"{split[0].Trim()}\",\"Value\":\"{split[1].Trim()}\"}}";
 		}
 
+		// TODO: Refactor this after Unity 2020.1 release. Unity will allow Generic Type Serialization....FINALLY \o/
 		private static bool IsKeyValuePairType(Type type)
 		{
 			if (!type.IsValueType)

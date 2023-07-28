@@ -16,7 +16,7 @@ namespace GameLovers.GoogleSheetImporter
 		/// <summary>
 		/// Requests the single unique Config of <typeparamref name="T"/> type
 		/// </summary>
-		T GetConfig<T>();
+		T GetSingleConfig<T>();
 		
 		/// <summary>
 		/// Requests the Config of <typeparamref name="T"/> type and with the given <paramref name="id"/>
@@ -42,12 +42,14 @@ namespace GameLovers.GoogleSheetImporter
 	{
 		/// <summary>
 		/// Adds the given unique single <paramref name="config"/> to the container.
+		/// Use the <seealso cref="IConfigsProvider.GetSingleConfig{T}"/> to retrieve it.
 		/// </summary>
 		void AddSingletonConfig<T>(T config);
 
 		/// <summary>
 		/// Adds the given <paramref name="configList"/> to the container.
 		/// The configuration will use the given <paramref name="referenceIdResolver"/> to map each config to it's defined id.
+		/// Use the <seealso cref="IConfigsProvider.GetConfig{T}"/> to retrieve it.
 		/// </summary>
 		void AddConfigs<T>(Func<T, int> referenceIdResolver, IList<T> configList) where T : struct;
 	}
@@ -60,17 +62,9 @@ namespace GameLovers.GoogleSheetImporter
 		private readonly IDictionary<Type, IEnumerable> _configs = new Dictionary<Type, IEnumerable>();
 		
 		/// <inheritdoc />
-		public T GetConfig<T>()
+		public T GetSingleConfig<T>()
 		{
-			var dictionary = GetConfigsDictionary<T>();
-
-			if (!dictionary.TryGetValue(_singleConfigId, out var config))
-			{
-				throw new InvalidOperationException($"The Config container for {typeof(T)} is not a single config container. " +
-				                                    $"Use either GetConfig<T>(int id) or GetConfigsList<T>() to get your needed config");
-			}
-			
-			return config;
+			return GetConfigsDictionary<T>()[_singleConfigId];
 		}
 
 		/// <inheritdoc />
