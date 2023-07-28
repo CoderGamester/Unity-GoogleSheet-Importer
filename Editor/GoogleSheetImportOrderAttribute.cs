@@ -5,7 +5,7 @@ using System;
 namespace GameLoversEditor.GoogleSheetImporter
 {
 	/// <summary>
-	/// Attribute to set the order of importing the data of a <seealso cref="IGoogleSheetImporter"/>
+	/// Attribute to set the order of importing the data of a <seealso cref="GoogleSheetImporter"/>
 	/// The smaller the number the sooner is going to be imported. Default = int.MaxValue
 	/// </summary>
 	[AttributeUsage(AttributeTargets.Class)]
