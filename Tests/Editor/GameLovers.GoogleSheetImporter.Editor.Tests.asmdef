@@ -3,7 +3,8 @@
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "GameLovers.GoogleSheetImporter"
+        "GameLovers.GoogleSheetImporter",
+        "GameLovers.DataExtensions"
     ],
     "includePlatforms": [
         "Editor"
