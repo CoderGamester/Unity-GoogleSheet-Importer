@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using GameLovers.ConfigsProvider;
+using GameLovers.GameData;
 using GameLovers.GoogleSheetImporter;
 using UnityEditor;
 using UnityEngine;

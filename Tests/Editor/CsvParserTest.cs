@@ -69,7 +69,6 @@ namespace GameLoversEditor.GoogleSheetImporter.Tests
 		{
 			var csv = "int,float\n" +
 					  "1,1.1";
-
 			var dic = CsvParser.ConvertCsv(csv);
 
 			Assert.AreEqual(0, dic.Count);
@@ -79,19 +78,19 @@ namespace GameLoversEditor.GoogleSheetImporter.Tests
 		public void ConvertCsv_OnlyHeadlines_EmptyResult()
 		{
 			var csv = "int,float,double,enum,pair";
-
 			var dic = CsvParser.ConvertCsv(csv);
 
 			Assert.AreEqual(0, dic.Count);
 		}
 
 		[Test]
-		public void ConvertCsv_MissMatchColumnsCount_ThrowsException()
+		public void ConvertCsv_MissMatchColumnsCount_FillsWithDefaultData()
 		{
 			var csv = "int,float,double\r\n" +
 					  "1,1.1";
+			var dic = CsvParser.ConvertCsv(csv);
 
-			Assert.Throws<IndexOutOfRangeException>(() => CsvParser.ConvertCsv(csv));
+			Assert.AreEqual("", dic[0]["double"]);
 		}
 
 		[Test]
