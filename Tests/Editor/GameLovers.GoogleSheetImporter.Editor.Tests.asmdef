@@ -4,7 +4,8 @@
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
         "GameLovers.GoogleSheetImporter",
-        "GameLovers.DataExtensions"
+        "GameLovers.DataExtensions",
+        "GameLovers.GameData"
     ],
     "includePlatforms": [
         "Editor"
