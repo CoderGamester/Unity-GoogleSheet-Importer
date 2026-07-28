@@ -8,7 +8,7 @@ namespace SheetImporters
 {
 	/// <inheritdoc />
 	[GoogleSheetImportOrder(0)]
-	public class GameIdsImporter : IGoogleSheetImporter
+	public class GameIdsImporter : IGoogleSheetConfigsImporter
 	{
 		private const string _name = "GameId";
 		private const string _nameGroup = "GameIdGroup";

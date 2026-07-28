@@ -4,6 +4,15 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.7.4] - 2026-07-29
+
+**New**:
+- Added `AGENTS.md` (contributor/agent guide) and `CLAUDE.md` (Claude Code wrapper) — the package previously had neither, only `README.md`.
+
+**Fixed**:
+- `Samples~/Importers Example/GameIdsImporter.cs` implemented a nonexistent interface, `IGoogleSheetImporter` (a compile error the moment the sample is imported) — the real interface, matching what the class actually implements, is `IGoogleSheetConfigsImporter`.
+- `README.md` was the unedited Unity "Package Starter Kit" boilerplate template (placeholder `Undefined.GooglesheetImporter` package name, references to files that don't exist in this package such as `Editor/EditorExample.cs`, generic instructions on *how to build a UPM package* rather than documentation of *this package's actual API*) — replaced with real usage documentation, verified against `Runtime/CsvParser.cs` and `Editor/GoogleSheetConfigsImporter.cs`.
+
 ## [0.7.3] - 2026-07-29
 
 **Fixed**:
