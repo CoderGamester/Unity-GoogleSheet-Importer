@@ -4,6 +4,17 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.7.3] - 2026-07-29
+
+**Fixed**:
+- `Tests/Editor/GameLovers.GoogleSheetImporter.Editor.Tests.asmdef` referenced `GameLovers.DataExtensions`, an assembly that does not exist anywhere in this package or the host repo — removed. The test file only uses `GameLovers.GoogleSheetImporter`.
+- Same asmdef was missing a `rootNamespace` key present on every sibling test asmdef in the package family — added (empty string, matching siblings; the test file declares its own explicit namespace regardless).
+- Added the `GameLovers.GameData` reference the test assembly needed (for `Pair<,>` used by the CSV parser tests) alongside the above.
+
+**Changed**:
+- Removed the unused `.github/workflows/openai.yml` CI workflow.
+- Added `.audit-history.md` to `.gitignore` (preventive — matches the convention already applied across sibling packages).
+
 ## [0.7.2] - 2026-01-14
 
 **Changed**:
