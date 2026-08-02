@@ -157,31 +157,6 @@ namespace GameLoversEditor.GoogleSheetImporter.Tests
 		}
 
 		[Test]
-		// ADMIT: a CSV column with no matching field on the target type is ignored.
-		// RCR: no UNIQUE mutation exists — DeserializeTo iterates `type.GetFields()` and never consults a
-		// key it has no field for, so surplus entries are unreachable by construction. The only edit that
-		// reddens this test is the ContainsKey guard deletion already claimed by its sibling
-		// Deserialize_MissingFields_Successfully (verified: that mutation reddens both). A5 duplicate —
-		// deletion candidate, not a coverage asset.
-		public void Deserialize_ExtraFields_Successfully()
-		{
-			var csv = "Int,Float,ExtraField\r\n" +
-					  "1,1.1,extraValue";
-			var dic = CsvParser.ConvertCsv(csv);
-			var result = CsvParser.DeserializeTo<MockClass>(dic[0]);
-
-			Assert.AreEqual(null, result.String);
-			Assert.AreEqual(1, result.Int);
-			Assert.AreEqual(1.1f, result.Float);
-			Assert.AreEqual(0, result.Double);
-			Assert.AreEqual(MockEnum.MockValue, result.Enum);
-			//Assert.AreEqual(null, result.Array);
-			// Assert.AreEqual(null, result.List);
-			// Assert.AreEqual(new KeyValuePair<int, int>(), result.Pair);
-			Assert.AreEqual(null, result.Dictionary);
-		}
-
-		[Test]
 		// ADMIT: CsvParser.ArrayParse splits on every bracket form in ArraySplitChars, so `1,[2],{3,4},(5),6`
 		// flattens to six elements rather than treating brackets as literal text.
 		// RCR: CsvParser.cs ArraySplitChars — remove '[' and ']' from the array → RED (the "[2]" element no
