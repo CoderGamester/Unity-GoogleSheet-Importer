@@ -185,7 +185,17 @@ symbol appears anywhere in the causal chain behind the assertion.
 **Two consequences, stated so RCR does not become theatre:**
 
 - A test with no `// RCR:` line — and no UNFALSIFIABLE exemption — is not trusted
-  coverage. In an audit it is a suspect by default.
+  coverage. In an audit it is a suspect by default. **`Smoke/` is exempt here too**, on the
+  same directory basis as §1: its defect class is "the assembly no longer loads", which has
+  no one-line mutation, so demanding an RCR line there flags those fixtures forever. The
+  exemption is the directory, not the assertion shape.
+- **"Unannotated" is three states, not one, and they need different actions.** A test with no
+  `// RCR:` line may have been (a) observed RED with the write-back lost, (b) seen reddening
+  only as collateral inside another test's blast radius, or (c) never probed. Only (c) needs a
+  probe; (a) needs the recorded observation written back; (b) is SHARED-PATH evidence, not a
+  unique pin. Check `.test-all/rcr/` before probing, and never write prepared annotation text
+  without a matching `RED-OK` for that test — prepared text also exists for tests that were
+  never probed, and writing it fabricates a verified claim.
 - **Benchmarks are included, inverted:** a performance test must be observed
   *changing its number* when the measured operation is removed from the measured
   body. A benchmark whose measured region does not contain the workload is a
