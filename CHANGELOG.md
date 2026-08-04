@@ -4,26 +4,14 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [0.7.3] - 2026-07-29
-
-**Docs**:
-- Completed this package against the host `AGENTS.md` §6.6 (`Tools/style-audit.py` reports 0 items). Documented the three importer base classes' extension points — `OnImport`, `OnImportComplete`, both `Deserialize` overloads and `GetDeserializers` — including why the single-config `Deserialize` has no default implementation. The three subclass overrides now carry `/// <inheritdoc />`, which was deferred in the earlier pass precisely because their bases were undocumented.
-
-**New**:
-- Added `AGENTS.md` (contributor/agent guide) and `CLAUDE.md` (Claude Code wrapper) — the package previously had neither, only `README.md`.
-
-- Removed the XML doc comments from the private `CsvParser.GetSubListDictionary` and `CsvParser.DictionaryParse` helpers, per the host repo's `AGENTS.md` §6.6 rule that private members are never XML-documented.
+## [0.7.3] - 2026-08-04
 
 **Changed**:
-- Removed the unused `.github/workflows/openai.yml` CI workflow.
-- Added `.audit-history.md` to `.gitignore` (preventive — matches the convention already applied across sibling packages).
+- Replaced the Unity Package Starter Kit README with package-specific guidance for installation, importer extension points, and CSV parsing.
 
 **Fixed**:
-- `Samples~/Importers Example/GameIdsImporter.cs` implemented a nonexistent interface, `IGoogleSheetImporter` (a compile error the moment the sample is imported) — the real interface, matching what the class actually implements, is `IGoogleSheetConfigsImporter`.
-- `README.md` was the unedited Unity "Package Starter Kit" boilerplate template (placeholder `Undefined.GooglesheetImporter` package name, references to files that don't exist in this package such as `Editor/EditorExample.cs`, generic instructions on *how to build a UPM package* rather than documentation of *this package's actual API*) — replaced with real usage documentation, verified against `Runtime/CsvParser.cs` and `Editor/GoogleSheetConfigsImporter.cs`.
-- `Tests/Editor/GameLovers.GoogleSheetImporter.Editor.Tests.asmdef` referenced `GameLovers.DataExtensions`, an assembly that does not exist anywhere in this package or the host repo — removed. The test file only uses `GameLovers.GoogleSheetImporter`.
-- Same asmdef was missing a `rootNamespace` key present on every sibling test asmdef in the package family — added (empty string, matching siblings; the test file declares its own explicit namespace regardless).
-- Added the `GameLovers.GameData` reference the test assembly needed (for `Pair<,>` used by the CSV parser tests) alongside the above.
+- Fixed the Importers Example sample so it implements the current `IGoogleSheetConfigsImporter` interface and compiles when imported.
+- Fixed the editor test assembly references so the package tests resolve their required `GameLovers.GameData` and parser assemblies.
 
 ## [0.7.2] - 2026-01-14
 
