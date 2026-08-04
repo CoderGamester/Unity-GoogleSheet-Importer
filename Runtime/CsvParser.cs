@@ -167,9 +167,6 @@ namespace GameLovers.GoogleSheetImporter
 			return list;
 		}
 
-		/// <summary>
-		/// Extracts the data dictionary of a sub list from the base deserialization data of an object.
-		/// </summary>
 		private static List<Dictionary<string, string>> GetSubListDictionary(
 			List<Dictionary<string, string>> data, int startIndex)
 		{
@@ -260,7 +257,6 @@ namespace GameLovers.GoogleSheetImporter
 				deserializers) as Dictionary<TKey, TValue>;
 		}
 
-		/// <inheritdoc cref="DictionaryParse{TKey,TValue}" />
 		private static object DictionaryParse(string text, Type keyType, Type valueType, Type dictionaryType,
 											  params Func<string, Type, object>[] deserializers)
 		{

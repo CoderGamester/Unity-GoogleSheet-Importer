@@ -76,8 +76,13 @@ namespace GameLoversEditor.GoogleSheetImporter
 			OnImportComplete(scriptableObject);
 		}
 
+		/// <summary>
+		/// Writes the fetched sheet rows onto the target asset. Called with the asset already located or
+		/// created, and with dirtying plus <c>OnImportComplete</c> handled by the caller.
+		/// </summary>
 		protected abstract void OnImport(TScriptableObject scriptableObject, List<Dictionary<string, string>> data);
 
+		/// <summary>Runs after the asset has been written and dirtied; the base implementation does nothing.</summary>
 		protected virtual void OnImportComplete(TScriptableObject scriptableObject) { }
 	}
 
@@ -91,6 +96,7 @@ namespace GameLoversEditor.GoogleSheetImporter
 		where TConfig : struct
 		where TScriptableObject : ScriptableObject, IConfigsContainer<TConfig>
 	{
+		/// <inheritdoc />
 		protected override void OnImport(TScriptableObject scriptableObject, List<Dictionary<string, string>> data)
 		{
 			var configs = new List<TConfig>();
@@ -103,6 +109,10 @@ namespace GameLoversEditor.GoogleSheetImporter
 			scriptableObject.Configs = configs;
 		}
 
+		/// <summary>
+		/// Turns one sheet row into a config. The default reflects over <typeparamref name="TConfig"/>'s
+		/// public fields; override for rows the parser cannot map by name alone.
+		/// </summary>
 		protected virtual TConfig Deserialize(Dictionary<string, string> data)
 		{
 			return CsvParser.DeserializeTo<TConfig>(data);
@@ -119,11 +129,16 @@ namespace GameLoversEditor.GoogleSheetImporter
 		where TConfig : struct
 		where TScriptableObject : ScriptableObject, ISingleConfigContainer<TConfig>
 	{
+		/// <inheritdoc />
 		protected override void OnImport(TScriptableObject scriptableObject, List<Dictionary<string, string>> data)
 		{
 			scriptableObject.Config = Deserialize(data);
 		}
 
+		/// <summary>
+		/// Turns the whole sheet into a single config. No default is provided, because the row-to-field
+		/// mapping for a single-config sheet is entirely importer-specific.
+		/// </summary>
 		protected abstract TConfig Deserialize(List<Dictionary<string, string>> data);
 	}
 
@@ -137,6 +152,7 @@ namespace GameLoversEditor.GoogleSheetImporter
 		where TConfig : struct
 		where TScriptableObject : ScriptableObject, ISingleConfigContainer<TConfig>
 	{
+		/// <inheritdoc />
 		protected override TConfig Deserialize(List<Dictionary<string, string>> data)
 		{
 			var config = new TConfig() as object;
@@ -177,6 +193,9 @@ namespace GameLoversEditor.GoogleSheetImporter
 			return (TConfig)config;
 		}
 
+		/// <summary>
+		/// Custom per-type parsers handed to <c>CsvParser</c> for cell values it cannot convert itself.
+		/// </summary>
 		protected abstract Func<string, Type, object>[] GetDeserializers();
 	}
 }
