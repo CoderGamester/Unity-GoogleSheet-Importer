@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 **New**:
 - Added `AGENTS.md` (contributor/agent guide) and `CLAUDE.md` (Claude Code wrapper) — the package previously had neither, only `README.md`.
 
+**Docs**:
+- Removed the XML doc comments from the private `CsvParser.GetSubListDictionary` and `CsvParser.DictionaryParse` helpers, per the host repo's `AGENTS.md` §6.6 rule that private members are never XML-documented.
+
 **Changed**:
 - Removed the unused `.github/workflows/openai.yml` CI workflow.
 - Added `.audit-history.md` to `.gitignore` (preventive — matches the convention already applied across sibling packages).
