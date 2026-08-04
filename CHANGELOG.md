@@ -6,10 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [0.7.3] - 2026-07-29
 
+**Docs**:
+- Completed this package against the host `AGENTS.md` §6.6 (`Tools/style-audit.py` reports 0 items). Documented the three importer base classes' extension points — `OnImport`, `OnImportComplete`, both `Deserialize` overloads and `GetDeserializers` — including why the single-config `Deserialize` has no default implementation. The three subclass overrides now carry `/// <inheritdoc />`, which was deferred in the earlier pass precisely because their bases were undocumented.
+
 **New**:
 - Added `AGENTS.md` (contributor/agent guide) and `CLAUDE.md` (Claude Code wrapper) — the package previously had neither, only `README.md`.
 
-**Docs**:
 - Removed the XML doc comments from the private `CsvParser.GetSubListDictionary` and `CsvParser.DictionaryParse` helpers, per the host repo's `AGENTS.md` §6.6 rule that private members are never XML-documented.
 
 **Changed**:
