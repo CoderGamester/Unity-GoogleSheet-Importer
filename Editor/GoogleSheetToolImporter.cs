@@ -39,7 +39,9 @@ namespace GameLoversEditor.GoogleSheetImporter
 			AssetDatabase.Refresh();
 		}
 
-		/// <summary>Re-runs importer discovery after a script reload, since the cached list holds stale types.</summary>
+		/// <summary>
+		/// Re-runs importer discovery after a script reload, since the cached list holds stale types.
+		/// </summary>
 		[DidReloadScripts]
 		public static void OnCompileScripts()
 		{
