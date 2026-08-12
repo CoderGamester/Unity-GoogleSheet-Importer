@@ -4,7 +4,7 @@
 
 ## 1. Package Overview
 - **Package**: `com.gamelovers.googlesheetimporter`
-- **Unity**: 6000.0+
+- **Unity**: minimum 6000.0; compatibility reference streams 6000.0.x, 6000.3.x, and 6000.5.x. Reference editors: 6000.0.81f1, 6000.3.21f1, 6000.5.7f1 (primary). Do not call a stream validated without current matrix artifacts.
 - **Dependencies** (see `package.json`)
   - `com.unity.nuget.newtonsoft-json` (2.0.0): fallback JSON deserialization path in `CsvParser.Parse`
   - `com.gamelovers.gamedata` (1.0.0): `IConfigsContainer<TConfig>` / `ISingleConfigContainer<TConfig>` (the interfaces a target `ScriptableObject` must implement) and `UnitySerializedDictionary<,>` (recognized specially by `CsvParser.DeserializeObject`)
