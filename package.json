@@ -2,7 +2,7 @@
   "name": "com.gamelovers.spreadsheetimporter",
   "displayName": "GameLovers Spreadsheet Importer",
   "author": "Miguel Tomas",
-  "version": "0.7.3",
+  "version": "1.0.0",
   "unity": "6000.0",
   "license": "MIT",
   "description": "Imports Google Sheets, Excel worksheets, and CSV files into ScriptableObject assets in the Editor, with an optional JSON copy for remotely delivered content.",
