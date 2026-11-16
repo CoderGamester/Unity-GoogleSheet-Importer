@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 
-namespace GameLovers.DataImporter.Editor
+namespace GameLovers.SpreadsheetImporter.Editor
 {
 	/// <summary>
 	/// Outcome of one import run, one result per importer. Its field names are the JSON report format that
-	/// <see cref="DataImporterEditorUtils.RunFromCommandLine"/> writes.
+	/// <see cref="SpreadsheetImporterEditorUtils.RunFromCommandLine"/> writes.
 	/// </summary>
 	[Serializable]
 	public sealed class ImportReport

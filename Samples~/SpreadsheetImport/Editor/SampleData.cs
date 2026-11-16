@@ -1,6 +1,6 @@
 using UnityEditor.Compilation;
 
-namespace GameLovers.DataImporter.Samples.DataImport.Editor
+namespace GameLovers.SpreadsheetImporter.Samples.SpreadsheetImport.Editor
 {
 	// A project normally writes its paths as literals ("Assets/Data/Items.csv"). The sample resolves them from
 	// its own assembly definition instead, because Package Manager imports it under a versioned folder.

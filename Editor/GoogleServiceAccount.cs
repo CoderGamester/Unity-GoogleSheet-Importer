@@ -5,7 +5,7 @@ using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace GameLovers.DataImporter.Editor
+namespace GameLovers.SpreadsheetImporter.Editor
 {
 	/// <summary>Reads a Google service-account key and builds the assertion it trades for a token.</summary>
 	internal static class GoogleServiceAccount

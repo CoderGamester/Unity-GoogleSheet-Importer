@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Xml.Linq;
 
-namespace GameLovers.DataImporter.Editor
+namespace GameLovers.SpreadsheetImporter.Editor
 {
 	/// <summary>Reads the cell values of one Excel worksheet without a third-party dependency.</summary>
 	public static class XlsxReader

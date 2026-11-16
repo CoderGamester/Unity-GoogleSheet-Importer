@@ -5,7 +5,7 @@ using GameLovers.GameData;
 using UnityEditor;
 using UnityEngine;
 
-namespace GameLovers.DataImporter.Editor
+namespace GameLovers.SpreadsheetImporter.Editor
 {
 	/// <summary>Optional surface that lets tooling locate the ScriptableObject asset an importer writes.</summary>
 	public interface IScriptableObjectImporter
@@ -17,7 +17,7 @@ namespace GameLovers.DataImporter.Editor
 	/// <summary>
 	/// Imports one CSV file into the project at edit time. Concrete implementations are discovered by reflection.
 	/// </summary>
-	public interface IDataImporter
+	public interface ISpreadsheetImporter
 	{
 		/// <summary>Project-relative path of the CSV file this importer reads.</summary>
 		string CsvPath { get; }
@@ -38,7 +38,7 @@ namespace GameLovers.DataImporter.Editor
 	/// next to the CSV file when the project has none.
 	/// </summary>
 	public abstract class ScriptableObjectImporter<TScriptableObject> :
-		IScriptableObjectImporter, IDataImporter where TScriptableObject : ScriptableObject
+		IScriptableObjectImporter, ISpreadsheetImporter where TScriptableObject : ScriptableObject
 	{
 		/// <inheritdoc />
 		public abstract string CsvPath { get; }
@@ -59,7 +59,7 @@ namespace GameLovers.DataImporter.Editor
 		public void Import(List<Dictionary<string, string>> data)
 		{
 			var type = typeof(TScriptableObject);
-			var scriptableObject = DataImporterEditorUtils.FindAsset(type) as TScriptableObject;
+			var scriptableObject = SpreadsheetImporterEditorUtils.FindAsset(type) as TScriptableObject;
 			var isNew = scriptableObject == null;
 			var path = isNew
 						   ? $"{CsvPath.Substring(0, CsvPath.LastIndexOf('/'))}/{type.Name}.asset"
@@ -121,7 +121,7 @@ namespace GameLovers.DataImporter.Editor
 
 				if (problems.Count > 0)
 				{
-					throw new DataImportException(DataImportException.HeaderRow, string.Join("; ", problems));
+					throw new SpreadsheetImportException(SpreadsheetImportException.HeaderRow, string.Join("; ", problems));
 				}
 			}
 
@@ -131,9 +131,9 @@ namespace GameLovers.DataImporter.Editor
 				{
 					configs.Add(Deserialize(data[i]));
 				}
-				catch (Exception e) when (e is not DataImportException)
+				catch (Exception e) when (e is not SpreadsheetImportException)
 				{
-					throw new DataImportException(i, e.Message, e);
+					throw new SpreadsheetImportException(i, e.Message, e);
 				}
 			}
 
@@ -207,7 +207,7 @@ namespace GameLovers.DataImporter.Editor
 
 				if (field == null)
 				{
-					throw new DataImportException(i, $"Unknown key '{fieldName}': {type.Name} has no public field " +
+					throw new SpreadsheetImportException(i, $"Unknown key '{fieldName}': {type.Name} has no public field " +
 													 $"with that name (prefix the key with '{CsvParser.IGNORE_COLUMN_CHAR}' to ignore the row)");
 				}
 
@@ -219,9 +219,9 @@ namespace GameLovers.DataImporter.Editor
 
 					field.SetValue(config, value);
 				}
-				catch (Exception e) when (e is not DataImportException)
+				catch (Exception e) when (e is not SpreadsheetImportException)
 				{
-					throw new DataImportException(i, $"Key '{fieldName}': {e.Message}", e);
+					throw new SpreadsheetImportException(i, $"Key '{fieldName}': {e.Message}", e);
 				}
 			}
 

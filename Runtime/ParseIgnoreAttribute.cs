@@ -1,6 +1,6 @@
 using System;
 
-namespace GameLovers.DataImporter
+namespace GameLovers.SpreadsheetImporter
 {
 	/// <summary>
 	/// Marks a config field the importer must leave untouched, even when the imported sheet has a column

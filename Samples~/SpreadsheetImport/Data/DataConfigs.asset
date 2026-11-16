@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b3ca01a64775f4c68bb51505171c7334, type: 3}
   m_Name: DataConfigs
-  m_EditorClassIdentifier: GameLovers.DataImporter.Samples.DataImport::GameLovers.DataImporter.Samples.DataImport.DataConfigs
+  m_EditorClassIdentifier: GameLovers.SpreadsheetImporter.Samples.SpreadsheetImport::GameLovers.SpreadsheetImporter.Samples.SpreadsheetImport.DataConfigs
   _configs:
   - Id: Weapon
     Int: 0

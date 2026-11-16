@@ -1,6 +1,6 @@
 using System;
 
-namespace GameLovers.DataImporter.Editor
+namespace GameLovers.SpreadsheetImporter.Editor
 {
 	/// <summary>Sets when an importer runs relative to the others; lower runs sooner, the default is last.</summary>
 	[AttributeUsage(AttributeTargets.Class)]

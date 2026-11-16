@@ -1,4 +1,4 @@
-# Data Import
+# Spreadsheet Import
 
 > **Unity compatibility:** Minimum Unity version `6000.0`; reference streams are `6000.0.x`, `6000.3.x`, and `6000.5.x`. The package is pipeline-neutral. See the [package compatibility matrix](../../README.md#unity-compatibility).
 
@@ -16,7 +16,7 @@ The sample ships already imported, so the assets and CSV files are there to insp
 ## Run it
 
 1. Import the sample from Package Manager.
-2. Open `Tools/GameLovers/Data Importer/Open Window`. The four importers are listed with their CSV file and source.
+2. Open `Tools/GameLovers/Spreadsheet Importer/Open Window`. The four importers are listed with their CSV file and source.
 3. Change a value in `Data/Items.csv` and press **Import** on `ItemConfigsImporter`. Select the asset and check the value.
 4. Change a cell in `Data/Enemies.xlsx`, save it, and press **Pull** then **Import** on `EnemyConfigsImporter`. `Data/Enemies.csv` shows the change as a diff.
 5. Press **Pull And Import All** to refresh the two Google Sheet tabs as well. This needs a network connection.
@@ -27,7 +27,7 @@ Rename the `Power` header in `Data/Items.csv`, or type a word into a `Power` cel
 
 ## Compare the two outputs
 
-`ItemConfigsImporter` turns on `WriteJsonPayload`, so each import also writes `Data/ItemConfigs.json` with the same content as the asset. Run `Tools/GameLovers/Data Importer Samples/Compare Asset And JSON Payload` to load the payload the way a player would and check it against the asset.
+`ItemConfigsImporter` turns on `WriteJsonPayload`, so each import also writes `Data/ItemConfigs.json` with the same content as the asset. Run `Tools/GameLovers/Spreadsheet Importer Samples/Compare Asset And JSON Payload` to load the payload the way a player would and check it against the asset.
 
 ## Notes
 

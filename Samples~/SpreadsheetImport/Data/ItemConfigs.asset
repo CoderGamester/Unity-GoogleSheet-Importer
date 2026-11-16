@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b8c4e5f6071243d9a0b1c2d3e4f56789, type: 3}
   m_Name: ItemConfigs
-  m_EditorClassIdentifier: GameLovers.DataImporter.Samples.DataImport::GameLovers.DataImporter.Samples.DataImport.ItemConfigs
+  m_EditorClassIdentifier: GameLovers.SpreadsheetImporter.Samples.SpreadsheetImport::GameLovers.SpreadsheetImporter.Samples.SpreadsheetImport.ItemConfigs
   _configs:
   - Id: 1
     Name: Wooden Sword

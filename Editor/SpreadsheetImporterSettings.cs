@@ -1,13 +1,13 @@
 using UnityEditor;
 using UnityEngine;
 
-namespace GameLovers.DataImporter.Editor
+namespace GameLovers.SpreadsheetImporter.Editor
 {
 	/// <summary>
-	/// Project-wide Data Importer settings, saved in <c>ProjectSettings/</c> so the whole team shares them.
+	/// Project-wide Spreadsheet Importer settings, saved in <c>ProjectSettings/</c> so the whole team shares them.
 	/// </summary>
-	[FilePath("ProjectSettings/GameLoversDataImporterSettings.asset", FilePathAttribute.Location.ProjectFolder)]
-	public sealed class DataImporterSettings : ScriptableSingleton<DataImporterSettings>
+	[FilePath("ProjectSettings/GameLoversSpreadsheetImporterSettings.asset", FilePathAttribute.Location.ProjectFolder)]
+	public sealed class SpreadsheetImporterSettings : ScriptableSingleton<SpreadsheetImporterSettings>
 	{
 		[SerializeField] private string _googleClientId;
 		[SerializeField] private string _googleClientSecret;

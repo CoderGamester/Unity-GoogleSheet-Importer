@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 316fb015682014d6eaa7579f06c6e588, type: 3}
   m_Name: GameConfigs
-  m_EditorClassIdentifier: GameLovers.DataImporter.Samples.DataImport::GameLovers.DataImporter.Samples.DataImport.GameConfigs
+  m_EditorClassIdentifier: GameLovers.SpreadsheetImporter.Samples.SpreadsheetImport::GameLovers.SpreadsheetImporter.Samples.SpreadsheetImport.GameConfigs
   _config:
     Random:
       Key: 5

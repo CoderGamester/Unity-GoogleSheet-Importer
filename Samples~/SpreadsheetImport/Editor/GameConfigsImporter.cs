@@ -1,7 +1,7 @@
 using System;
-using GameLovers.DataImporter.Editor;
+using GameLovers.SpreadsheetImporter.Editor;
 
-namespace GameLovers.DataImporter.Samples.DataImport.Editor
+namespace GameLovers.SpreadsheetImporter.Samples.SpreadsheetImport.Editor
 {
 	// Source: a Key/Value tab of the same Google Sheet, read into a single config instead of a list.
 	public sealed class GameConfigsImporter : SingleConfigSubListImporter<GameConfig, GameConfigs>

@@ -1,4 +1,4 @@
-# GameLovers DataImporter Tests — Agent Guide
+# GameLovers Spreadsheet Importer Tests — Agent Guide
 
 This guide adds test-only rules to the package and host guides.
 
@@ -67,14 +67,14 @@ Benchmarks use the inverted check: removing the workload from the measured body 
 - The package has one Editor-only test assembly with five fixtures:
   - `CsvParserTest`: CSV reading and writing, cell parsing, column validation.
   - `XlsxReaderTest`: Excel worksheets.
-  - `DataImporterEditorUtilsTest`: Google Sheet URL rewriting, `Run` results, the report format, command-line arguments, credential order, and Sheets API rows.
+  - `SpreadsheetImporterEditorUtilsTest`: Google Sheet URL rewriting, `Run` results, the report format, command-line arguments, credential order, and Sheets API rows.
   - `GoogleServiceAccountTest`: service-account key reading and the signed assertion.
   - `GoogleSignInTest`: PKCE, the consent URL, client files, the redirect reply, and the id token.
 - The live sign-in and Google's endpoints are not covered.
 - `GoogleServiceAccountTest` generates its RSA key in memory and encodes it as PKCS#8 itself. Never commit a private key or a service-account JSON file, even a throwaway one: the repository is public and secret scanners flag them.
 - The test assembly references the package Editor assembly, where the parser and readers live, plus the runtime and GameData assemblies and Newtonsoft.Json. `InternalsVisibleTo` exposes the command-line helpers to it. Do not claim coverage of downloads, importer discovery, the window, or `AssetDatabase` writes from this suite.
 - `XlsxReaderTest` writes each workbook it needs into the temp folder from inline XML and deletes it in teardown. Do not add binary workbook fixtures.
-- Test importers are NSubstitute substitutes of `IDataImporter`. Never declare a concrete `IDataImporter` class in the test assembly: importer discovery would find it, and it would appear in the window and in `ImportAll`.
+- Test importers are NSubstitute substitutes of `ISpreadsheetImporter`. Never declare a concrete `ISpreadsheetImporter` class in the test assembly: importer discovery would find it, and it would appear in the window and in `ImportAll`.
 
 ## Adding coverage
 
@@ -82,7 +82,7 @@ Benchmarks use the inverted check: removing the workload from the measured body 
 - Prefer table-driven cases for delimiters, scalar types, nullable values, collections, dictionaries, key/value structs, ignored fields, and fallback JSON.
 - Assert populated field values and failure behavior, not merely successful construction.
 - A test that depends on the regional settings sets `CultureInfo.CurrentCulture` itself and restores it in a `finally`.
-- Asset writes, pulls, and the window require a real import of the Data Import sample and inspection of the generated assets and CSV files.
+- Asset writes, pulls, and the window require a real import of the Spreadsheet Import sample and inspection of the generated assets and CSV files.
 
 ## Verification
 

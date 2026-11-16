@@ -1,6 +1,6 @@
-using GameLovers.DataImporter.Editor;
+using GameLovers.SpreadsheetImporter.Editor;
 
-namespace GameLovers.DataImporter.Samples.DataImport.Editor
+namespace GameLovers.SpreadsheetImporter.Samples.SpreadsheetImport.Editor
 {
 	// Source: a CSV file edited directly in the repository, by hand or by an agent.
 	// Output: the ItemConfigs asset, plus the opt-in JSON payload with the same content.

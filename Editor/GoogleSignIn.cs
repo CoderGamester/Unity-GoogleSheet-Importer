@@ -11,7 +11,7 @@ using Newtonsoft.Json.Linq;
 using UnityEditor;
 using UnityEngine;
 
-namespace GameLovers.DataImporter.Editor
+namespace GameLovers.SpreadsheetImporter.Editor
 {
 	/// <summary>
 	/// Signs the Editor user in to Google with the project's Desktop OAuth client, so pulls can read the private
@@ -22,8 +22,8 @@ namespace GameLovers.DataImporter.Editor
 		internal const string Scope = "openid email https://www.googleapis.com/auth/spreadsheets.readonly";
 
 		private const string AuthorizationEndpoint = "https://accounts.google.com/o/oauth2/v2/auth";
-		private const string RefreshTokenPrefsPrefix = "GameLovers.DataImporter.GoogleRefreshToken:";
-		private const string AccountPrefsPrefix = "GameLovers.DataImporter.GoogleAccount:";
+		private const string RefreshTokenPrefsPrefix = "GameLovers.SpreadsheetImporter.GoogleRefreshToken:";
+		private const string AccountPrefsPrefix = "GameLovers.SpreadsheetImporter.GoogleAccount:";
 		private const int SignInTimeoutSeconds = 180;
 		private const string BrowserReply =
 			"<html><body style=\"font-family:sans-serif;margin:3em\"><h2>{0}</h2><p>You can close this tab and return to Unity.</p></body></html>";
@@ -49,7 +49,7 @@ namespace GameLovers.DataImporter.Editor
 		/// </summary>
 		internal static void Begin(Action<string> done)
 		{
-			var settings = DataImporterSettings.instance;
+			var settings = SpreadsheetImporterSettings.instance;
 
 			if (!settings.HasGoogleClient)
 			{
@@ -83,7 +83,7 @@ namespace GameLovers.DataImporter.Editor
 				try
 				{
 					var code = ReadRedirect(task.IsFaulted ? null : task.Result, state);
-					var tokens = DataImporterEditorUtils.PostToken(new Dictionary<string, string>
+					var tokens = SpreadsheetImporterEditorUtils.PostToken(new Dictionary<string, string>
 					{
 						["grant_type"] = "authorization_code",
 						["code"] = code,
@@ -134,7 +134,7 @@ namespace GameLovers.DataImporter.Editor
 		internal static string AccessToken()
 		{
 			var refreshToken = EditorPrefs.GetString(RefreshTokenPrefsKey, null);
-			var settings = DataImporterSettings.instance;
+			var settings = SpreadsheetImporterSettings.instance;
 
 			if (string.IsNullOrEmpty(refreshToken) || !settings.HasGoogleClient)
 			{
@@ -143,7 +143,7 @@ namespace GameLovers.DataImporter.Editor
 
 			try
 			{
-				var tokens = DataImporterEditorUtils.PostToken(new Dictionary<string, string>
+				var tokens = SpreadsheetImporterEditorUtils.PostToken(new Dictionary<string, string>
 				{
 					["grant_type"] = "refresh_token",
 					["refresh_token"] = refreshToken,
@@ -153,11 +153,11 @@ namespace GameLovers.DataImporter.Editor
 
 				return tokens.Value<string>("access_token");
 			}
-			catch (IOException e) when (e.Data[DataImporterEditorUtils.GoogleErrorKey] as string == "invalid_grant")
+			catch (IOException e) when (e.Data[SpreadsheetImporterEditorUtils.GoogleErrorKey] as string == "invalid_grant")
 			{
 				SignOut();
 
-				throw new IOException("Your Google sign-in has expired or was revoked. Sign in again in the Data Importer window");
+				throw new IOException("Your Google sign-in has expired or was revoked. Sign in again in the Spreadsheet Importer window");
 			}
 		}
 
@@ -271,7 +271,7 @@ namespace GameLovers.DataImporter.Editor
 			var query = context.Request.QueryString;
 			var values = query.AllKeys.Where(key => key != null).ToDictionary(key => key, key => query[key]);
 			var reply = Encoding.UTF8.GetBytes(string.Format(BrowserReply,
-				values.ContainsKey("code") ? "Signed in to the Data Importer" : "The Data Importer sign-in did not finish"));
+				values.ContainsKey("code") ? "Signed in to the Spreadsheet Importer" : "The Spreadsheet Importer sign-in did not finish"));
 
 			context.Response.ContentType = "text/html; charset=utf-8";
 			context.Response.ContentLength64 = reply.Length;

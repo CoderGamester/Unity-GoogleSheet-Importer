@@ -6,7 +6,7 @@ using System.Text;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 
-namespace GameLovers.DataImporter.Editor.Tests
+namespace GameLovers.SpreadsheetImporter.Editor.Tests
 {
 	public class GoogleServiceAccountTest
 	{

@@ -1,11 +1,11 @@
 {
-    "name": "GameLovers.DataImporter.Editor.Tests",
+    "name": "GameLovers.SpreadsheetImporter.Editor.Tests",
     "rootNamespace": "",
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "GameLovers.DataImporter",
-        "GameLovers.DataImporter.Editor",
+        "GameLovers.SpreadsheetImporter",
+        "GameLovers.SpreadsheetImporter.Editor",
         "GameLovers.GameData"
     ],
     "includePlatforms": [

@@ -7,15 +7,15 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using PackageInfo = UnityEditor.PackageManager.PackageInfo;
 
-namespace GameLovers.DataImporter.Editor
+namespace GameLovers.SpreadsheetImporter.Editor
 {
 	/// <summary>
 	/// Lists the project's importers and runs their pull and import steps one at a time or all together, showing
 	/// the outcome of each run on the importer's row.
 	/// </summary>
-	public sealed class DataImporterWindow : EditorWindow
+	public sealed class SpreadsheetImporterWindow : EditorWindow
 	{
-		private const string StyleSheetPath = "/Editor/DataImporterWindow.uss";
+		private const string StyleSheetPath = "/Editor/SpreadsheetImporterWindow.uss";
 		private const string OverrideTooltip =
 			"Replaces the spreadsheet id of every Google Sheet source for the pulls started from this window. " +
 			"Use it to pull from a duplicate of the sheet without changing the importers.";
@@ -47,7 +47,7 @@ namespace GameLovers.DataImporter.Editor
 
 		private void CreateGUI()
 		{
-			var packagePath = PackageInfo.FindForAssembly(typeof(DataImporterWindow).Assembly)?.assetPath;
+			var packagePath = PackageInfo.FindForAssembly(typeof(SpreadsheetImporterWindow).Assembly)?.assetPath;
 			var styleSheet = packagePath == null ? null : AssetDatabase.LoadAssetAtPath<StyleSheet>(packagePath + StyleSheetPath);
 			var toolbar = new VisualElement();
 
@@ -64,8 +64,8 @@ namespace GameLovers.DataImporter.Editor
 			_google.AddToClassList("importer-google");
 			_spreadsheetId.RegisterValueChangedCallback(change => _spreadsheetIdOverride = change.newValue);
 			toolbar.AddToClassList("importer-toolbar");
-			toolbar.Add(new Button(() => Run(DataImporterEditorUtils.DiscoverImporters(), true)) { text = "Pull And Import All" });
-			toolbar.Add(new Button(() => Run(DataImporterEditorUtils.DiscoverImporters(), false)) { text = "Import All" });
+			toolbar.Add(new Button(() => Run(SpreadsheetImporterEditorUtils.DiscoverImporters(), true)) { text = "Pull And Import All" });
+			toolbar.Add(new Button(() => Run(SpreadsheetImporterEditorUtils.DiscoverImporters(), false)) { text = "Import All" });
 			toolbar.Add(_summary);
 			_summary.AddToClassList("importer-toolbar__summary");
 			rootVisualElement.AddToClassList("importer-window");
@@ -86,15 +86,15 @@ namespace GameLovers.DataImporter.Editor
 		}
 
 		/// <summary>Opens the window, or focuses it when it is already open.</summary>
-		[MenuItem("Tools/GameLovers/Data Importer/Open Window", priority = 200)]
+		[MenuItem("Tools/GameLovers/Spreadsheet Importer/Open Window", priority = 200)]
 		public static void Open()
 		{
-			GetWindow<DataImporterWindow>("Data Importer");
+			GetWindow<SpreadsheetImporterWindow>("Spreadsheet Importer");
 		}
 
 		private void RebuildRows()
 		{
-			var importers = DataImporterEditorUtils.DiscoverImporters();
+			var importers = SpreadsheetImporterEditorUtils.DiscoverImporters();
 			var failed = importers.Count(importer => _results.TryGetValue(importer.GetType().Name, out var last) &&
 														!string.IsNullOrEmpty(last.Result.Error));
 			var hasGoogleSheet = importers.Any(importer => SourceKind(importer.Source) == GoogleSheetKind);
@@ -106,7 +106,7 @@ namespace GameLovers.DataImporter.Editor
 
 			if (importers.Count == 0)
 			{
-				_rows.Add(new HelpBox("No importers yet. Add a class that implements IDataImporter in an Editor assembly.",
+				_rows.Add(new HelpBox("No importers yet. Add a class that implements ISpreadsheetImporter in an Editor assembly.",
 					HelpBoxMessageType.Info));
 			}
 
@@ -116,7 +116,7 @@ namespace GameLovers.DataImporter.Editor
 			}
 		}
 
-		private VisualElement BuildRow(IDataImporter importer)
+		private VisualElement BuildRow(ISpreadsheetImporter importer)
 		{
 			var name = importer.GetType().Name;
 			var source = importer.Source;
@@ -173,9 +173,9 @@ namespace GameLovers.DataImporter.Editor
 			return row;
 		}
 
-		private void Run(IReadOnlyList<IDataImporter> importers, bool pull)
+		private void Run(IReadOnlyList<ISpreadsheetImporter> importers, bool pull)
 		{
-			var report = DataImporterEditorUtils.Run(importers, pull, _spreadsheetIdOverride);
+			var report = SpreadsheetImporterEditorUtils.Run(importers, pull, _spreadsheetIdOverride);
 			var time = DateTime.Now;
 
 			foreach (var result in report.Results)
@@ -190,7 +190,7 @@ namespace GameLovers.DataImporter.Editor
 
 		private void RebuildGoogle()
 		{
-			var hasClient = DataImporterSettings.instance.HasGoogleClient;
+			var hasClient = SpreadsheetImporterSettings.instance.HasGoogleClient;
 			var header = new VisualElement();
 			var title = new Label("Google sign-in");
 			var status = new Label();
@@ -269,7 +269,7 @@ namespace GameLovers.DataImporter.Editor
 			guide.Add(SetupStep(SetupSteps.Length + 1,
 				hasClient ? "The client is loaded. Load another file to replace it." : "Load the downloaded file here.",
 				new Button(LoadClientFile) { text = "Load Client File…" }));
-			guide.Add(StatusLabel("It is saved to ProjectSettings/GameLoversDataImporterSettings.asset. Commit that file to share it."));
+			guide.Add(StatusLabel("It is saved to ProjectSettings/GameLoversSpreadsheetImporterSettings.asset. Commit that file to share it."));
 
 			return guide;
 		}
@@ -287,7 +287,7 @@ namespace GameLovers.DataImporter.Editor
 			{
 				var client = GoogleSignIn.ReadClientFile(File.ReadAllText(path));
 
-				DataImporterSettings.instance.SetGoogleClient(client.ClientId, client.ClientSecret);
+				SpreadsheetImporterSettings.instance.SetGoogleClient(client.ClientId, client.ClientSecret);
 				_googleMessage = null;
 				_showSetup = false;
 			}
@@ -356,7 +356,7 @@ namespace GameLovers.DataImporter.Editor
 			return source.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? GoogleSheetKind : "Excel";
 		}
 
-		private static void OpenSource(IDataImporter importer)
+		private static void OpenSource(ISpreadsheetImporter importer)
 		{
 			var source = importer.Source;
 
@@ -402,10 +402,10 @@ namespace GameLovers.DataImporter.Editor
 			return status;
 		}
 
-		private static UnityEngine.Object FindAsset(IDataImporter importer)
+		private static UnityEngine.Object FindAsset(ISpreadsheetImporter importer)
 		{
 			return importer is IScriptableObjectImporter scriptableObjectImporter
-					   ? DataImporterEditorUtils.FindAsset(scriptableObjectImporter.ScriptableObjectType)
+					   ? SpreadsheetImporterEditorUtils.FindAsset(scriptableObjectImporter.ScriptableObjectType)
 					   : null;
 		}
 	}

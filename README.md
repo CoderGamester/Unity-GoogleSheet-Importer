@@ -1,6 +1,6 @@
-# GameLovers DataImporter
+# GameLovers Spreadsheet Importer
 
-Editor tooling that imports CSV files, Excel worksheets, and Google Sheets into ScriptableObject configuration assets.
+Imports Google Sheets, Excel worksheets, and CSV files into ScriptableObject assets in the Editor, with an optional JSON copy for remotely delivered content.
 
 [![Unity](https://img.shields.io/badge/Unity-6000.0%20%7C%206000.3%20%7C%206000.5-blue.svg)](https://unity.com/download)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
@@ -29,7 +29,7 @@ Git dependencies are not resolved transitively by Unity. Install GameData and th
 {
   "dependencies": {
     "com.gamelovers.gamedata": "https://github.com/CoderGamester/Unity-GameData.git#1.0.3",
-    "com.gamelovers.dataimporter": "https://github.com/CoderGamester/Unity-GoogleSheet-Importer.git#<release-tag>"
+    "com.gamelovers.spreadsheetimporter": "https://github.com/CoderGamester/Unity-GoogleSheet-Importer.git#<release-tag>"
   }
 }
 ```
@@ -59,7 +59,7 @@ public sealed class ItemConfigs : ScriptableObject, IConfigsContainer<ItemConfig
 
 ```csharp
 // Editor-only assembly
-using GameLovers.DataImporter.Editor;
+using GameLovers.SpreadsheetImporter.Editor;
 
 public sealed class ItemConfigsImporter : ConfigsImporter<ItemConfig, ItemConfigs>
 {
@@ -73,7 +73,7 @@ Id,Name,Power
 2,Iron Shield,2
 ```
 
-Save the table as `Assets/Data/Items.csv` and run `Tools/GameLovers/Data Importer/Import All`. The importer writes `Assets/Data/ItemConfigs.asset`, or updates the project's existing `ItemConfigs` asset wherever it is.
+Save the table as `Assets/Data/Items.csv` and run `Tools/GameLovers/Spreadsheet Importer/Import All`. The importer writes `Assets/Data/ItemConfigs.asset`, or updates the project's existing `ItemConfigs` asset wherever it is.
 
 ## Sources
 
@@ -90,9 +90,9 @@ The CSV file is the one input of an import. A spreadsheet is an optional upstrea
 
 ### Private Google Sheets
 
-Sign in with Google in the Data Importer window. Pulls then read every sheet your account can open: no sharing step and no key file.
+Sign in with Google in the Spreadsheet Importer window. Pulls then read every sheet your account can open: no sharing step and no key file.
 
-1. **Once per project, by one person.** In the window, click **Set Up** next to *Google sign-in*. Follow the four **Open** links in the Google Cloud console, then click **Load Client File…** and pick the JSON file Google downloaded. Commit `ProjectSettings/GameLoversDataImporterSettings.asset`.
+1. **Once per project, by one person.** In the window, click **Set Up** next to *Google sign-in*. Follow the four **Open** links in the Google Cloud console, then click **Load Client File…** and pick the JSON file Google downloaded. Commit `ProjectSettings/GameLoversSpreadsheetImporterSettings.asset`.
 2. **Everyone.** Click **Sign In With Google** and approve in the browser.
 3. Put the sheet's URL in the importer's `Source` and pull as usual.
 
@@ -103,7 +103,7 @@ Sign in with Google in the Data Importer window. Pulls then read every sheet you
 | Where the sign-in is kept | Per user and project in EditorPrefs, never in the project. It is not encrypted, as with most developer tools. **Sign Out** removes it. |
 | The client file | Google treats a Desktop app client's secret as not confidential, so committing it to a private repository is fine. A public GitHub repository may block the push as a leaked secret: keep the file out of it and share it with your team another way. |
 
-**Builds without a person (CI):** use a Google service account instead. Enable the Google Sheets API in its Cloud project, download its JSON key, and share each sheet with the account's `client_email` as a Viewer. Pass the key with `-dataImportServiceAccountKey <path>` or the `GOOGLE_APPLICATION_CREDENTIALS` environment variable, and keep the file outside the project: the package warns when it is inside.
+**Builds without a person (CI):** use a Google service account instead. Enable the Google Sheets API in its Cloud project, download its JSON key, and share each sheet with the account's `client_email` as a Viewer. Pass the key with `-spreadsheetServiceAccountKey <path>` or the `GOOGLE_APPLICATION_CREDENTIALS` environment variable, and keep the file outside the project: the package warns when it is inside.
 
 A pull signs in with the first of these that is set: the command-line key, the signed-in user, `GOOGLE_APPLICATION_CREDENTIALS`. With none, it downloads anonymously.
 
@@ -135,23 +135,23 @@ Prefer the asset unless you need the payload. Measured in a macOS standalone pla
 | CSV dialect | Quoted cells may contain commas, doubled quotes, and line breaks; CRLF and LF files both work |
 | Order | Importers run one after another; `[ImportOrder(n)]` runs lower numbers first |
 
-Three base classes cover the sheet shapes: `ConfigsImporter` (one row per config), `SingleConfigImporter` (the whole sheet is one config), and `SingleConfigSubListImporter` (Key/Value rows with nested lists). Implement `IDataImporter` directly to generate code or write anything else.
+Three base classes cover the sheet shapes: `ConfigsImporter` (one row per config), `SingleConfigImporter` (the whole sheet is one config), and `SingleConfigSubListImporter` (Key/Value rows with nested lists). Implement `ISpreadsheetImporter` directly to generate code or write anything else.
 
 ## Headless and agent workflow
 
 Edit the CSV file, then import without opening the Editor:
 
 ```bash
-Unity -batchmode -projectPath . -executeMethod GameLovers.DataImporter.Editor.DataImporterEditorUtils.RunFromCommandLine -dataImportReport Logs/data-import.json -quit -logFile import.log
+Unity -batchmode -projectPath . -executeMethod GameLovers.SpreadsheetImporter.Editor.SpreadsheetImporterEditorUtils.RunFromCommandLine -spreadsheetReport Logs/spreadsheet-import.json -quit -logFile import.log
 ```
 
 | Argument | Effect |
 | --- | --- |
-| `-dataImporters ItemConfigsImporter,EnemyConfigsImporter` | Run only these importers, by type name; an unknown name fails the run and lists the available importers |
-| `-dataImportPull` | Pull each upstream source into its CSV file before importing |
-| `-dataImportSpreadsheetId <id>` | Pull every Google Sheet source from another spreadsheet, such as a duplicate |
-| `-dataImportServiceAccountKey <path>` | Pull private Google Sheets with a service-account key. Without it, a run on a machine where someone signed in uses that sign-in |
-| `-dataImportReport <path>` | Write a JSON report; an earlier report at that path is deleted first |
+| `-spreadsheetImporters ItemConfigsImporter,EnemyConfigsImporter` | Run only these importers, by type name; an unknown name fails the run and lists the available importers |
+| `-spreadsheetPull` | Pull each upstream source into its CSV file before importing |
+| `-spreadsheetId <id>` | Pull every Google Sheet source from another spreadsheet, such as a duplicate |
+| `-spreadsheetServiceAccountKey <path>` | Pull private Google Sheets with a service-account key. Without it, a run on a machine where someone signed in uses that sign-in |
+| `-spreadsheetReport <path>` | Write a JSON report; an earlier report at that path is deleted first |
 
 The run exits non-zero when any importer fails. The report lists every importer, and each error names the file and line:
 
@@ -165,15 +165,15 @@ The run exits non-zero when any importer fails. The report lists every importer,
 }
 ```
 
-`DataImporterEditorUtils.ImportAll` and `PullAndImportAll` run every importer the same way, without arguments.
+`SpreadsheetImporterEditorUtils.ImportAll` and `PullAndImportAll` run every importer the same way, without arguments.
 
 **Edit the right file.** A Pull overwrites the CSV file of an importer that has a `Source`. For those importers, change the spreadsheet; edit the CSV file directly only for importers without a source. In the window, the source badge on each row shows which kind it is.
 
 ## Editor tools and sample
 
-`Tools/GameLovers/Data Importer/` holds **Import All**, **Pull And Import All**, and **Open Window**. The window lists every importer with a CSV, Excel, or Google Sheet badge and four buttons: **Open Source**, **Pull And Import**, **Import**, and **Select Asset**. After a run, each row shows its result: the number of imported rows, or the error with its file and line. A pull shows a progress bar and can be cancelled. The **Google sign-in** section above the rows shows who is signed in and holds **Set Up**, **Sign In With Google**, and **Sign Out**.
+`Tools/GameLovers/Spreadsheet Importer/` holds **Import All**, **Pull And Import All**, and **Open Window**. The window lists every importer with a CSV, Excel, or Google Sheet badge and four buttons: **Open Source**, **Pull And Import**, **Import**, and **Select Asset**. After a run, each row shows its result: the number of imported rows, or the error with its file and line. A pull shows a progress bar and can be cancelled. The **Google sign-in** section above the rows shows who is signed in and holds **Set Up**, **Sign In With Google**, and **Sign Out**.
 
-The **Data Import** sample has one importer per source, with the CSV files, an Excel workbook, the imported assets, and a JSON payload to compare against. Import it from Package Manager and read its README.
+The **Spreadsheet Import** sample has one importer per source, with the CSV files, an Excel workbook, the imported assets, and a JSON payload to compare against. Import it from Package Manager and read its README.
 
 ## Help and changes
 

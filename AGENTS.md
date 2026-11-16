@@ -1,17 +1,17 @@
-# GameLovers DataImporter — Agent Guide
+# GameLovers Spreadsheet Importer — Agent Guide
 
 This guide adds package-specific rules to the host repository guide. Consumer usage belongs in `README.md`.
 
 ## Scope
 
-- Package: `com.gamelovers.dataimporter`; minimum Unity version and dependencies are authoritative in `package.json`.
+- Package: `com.gamelovers.spreadsheetimporter`; minimum Unity version and dependencies are authoritative in `package.json`.
 - The pipeline is Editor-only: an upstream (Google Sheet or Excel worksheet) is pulled into a CSV file in the project, and the CSV file is imported into a ScriptableObject asset. Nothing parses sheet data in a player.
-- Runtime assembly `GameLovers.DataImporter` holds only `ParseIgnoreAttribute`, because config structs in player assemblies carry it. Editor namespace: `GameLovers.DataImporter.Editor`.
+- Runtime assembly `GameLovers.SpreadsheetImporter` holds only `ParseIgnoreAttribute`, because config structs in player assemblies carry it. Editor namespace: `GameLovers.SpreadsheetImporter.Editor`.
 - This package is render-pipeline-neutral.
 
 ## Assembly boundaries
 
-- `Runtime/GameLovers.DataImporter.asmdef` must stay free of `UnityEditor`, GameData, and Newtonsoft references. Do not move parsing, reading, or writing code into it.
+- `Runtime/GameLovers.SpreadsheetImporter.asmdef` must stay free of `UnityEditor`, GameData, and Newtonsoft references. Do not move parsing, reading, or writing code into it.
 - The CSV parser, the Excel reader, importer discovery, menus, the window, asset writes, and web requests belong under `Editor/`.
 - The Editor assembly depends on GameData types exposed in its API. Preserve direct asmdef/package dependencies; do not rely on transitive resolution.
 - `XlsxReader` uses only `System.IO.Compression` and `System.Xml.Linq`. Do not add a third-party spreadsheet library.
@@ -23,14 +23,14 @@ This guide adds package-specific rules to the host repository guide. Consumer us
 - The ScriptableObject asset is the default output and is always written. The JSON payload is opt-in per importer through `WriteJsonPayload` and is `JsonUtility.ToJson` of the same asset, so both outputs always hold the same content. Do not add a second serializer or a runtime reader type for it.
 - `Run` executes importers sequentially, records one `ImportResult` per importer, logs each failure as `path:line: message`, and never throws or saves. `ImportAll` and `RunFromCommandLine` run it over `ImportOrderAttribute` order, then type name, save once, and throw when any importer failed. That exception is what makes a batchmode `-executeMethod` run exit non-zero; do not swallow it.
 - The public field names of `ImportReport` and `ImportResult` are the JSON report format agents parse. Renaming one or turning it into a property is a breaking change.
-- `RunFromCommandLine` deletes an existing report before running, so a report on disk always belongs to the last run. An unknown `-dataImporters` name fails before any importer runs.
+- `RunFromCommandLine` deletes an existing report before running, so a report on disk always belongs to the last run. An unknown `-spreadsheetImporters` name fails before any importer runs.
 - Progress bars are skipped in batchmode. Cancelling a download aborts the request and fails only that importer.
 - A CSV file without data rows is an import error, so an emptied sheet or worksheet cannot silently empty an asset.
-- Report a row failure by throwing `DataImportException` with the zero-based data row. Only `DataImporterEditorUtils.Import` turns the row into a file line, using the line map `CsvParser.ConvertCsv` fills.
+- Report a row failure by throwing `SpreadsheetImportException` with the zero-based data row. Only `SpreadsheetImporterEditorUtils.Import` turns the row into a file line, using the line map `CsvParser.ConvertCsv` fills.
 - Google Sheet URLs are rewritten to public CSV export URLs from the spreadsheet id and `gid` wherever they appear in the URL, including the account-scoped `/u/<n>/` form. A published-to-web URL is rejected. An HTML response is an error, not data.
-- A pull of a Google Sheet picks one credential, in this order: the `-dataImportServiceAccountKey` key, the signed-in user (`GoogleSignIn`), the `GOOGLE_APPLICATION_CREDENTIALS` key, then an anonymous download of the CSV export URL. `ServiceAccountKeyFor` owns that order.
+- A pull of a Google Sheet picks one credential, in this order: the `-spreadsheetServiceAccountKey` key, the signed-in user (`GoogleSignIn`), the `GOOGLE_APPLICATION_CREDENTIALS` key, then an anonymous download of the CSV export URL. `ServiceAccountKeyFor` owns that order.
 - With a credential, the pull reads the tab through the Sheets API (`spreadsheets.readonly` only; never a Drive scope) and writes the values as CSV, padded to the widest row. Do not send a token to the CSV export URL: Google does not document it for that endpoint.
-- `GoogleSignIn` is an installed-app OAuth flow: loopback redirect on `127.0.0.1`, PKCE S256, and a state check. Google still requires the Desktop client's secret. The client comes from `DataImporterSettings` in `ProjectSettings/`, shared by the team. The refresh token and account live per user and project in EditorPrefs. An `invalid_grant` on refresh signs the user out and asks for a new sign-in.
+- `GoogleSignIn` is an installed-app OAuth flow: loopback redirect on `127.0.0.1`, PKCE S256, and a state check. Google still requires the Desktop client's secret. The client comes from `SpreadsheetImporterSettings` in `ProjectSettings/`, shared by the team. The refresh token and account live per user and project in EditorPrefs. An `invalid_grant` on refresh signs the user out and asks for a new sign-in.
 - Never log, report, or store a key's content, an assertion, an authorization code, or a token outside those places. A service-account key inside the project folder gets a warning, not a refusal, because CI may write the key into its workspace.
 - The Editor's Mono runtime cannot import PKCS#8 keys (`RSA.ImportPkcs8PrivateKey` throws `PlatformNotSupportedException`), so `GoogleServiceAccount.ReadPrivateKey` reads the DER itself. Keep it dependency-free.
 - The spreadsheet-id override is a per-pull argument and must not mutate importer definitions.
@@ -49,11 +49,11 @@ This guide adds package-specific rules to the host repository guide. Consumer us
 
 ## Importer invariants
 
-- Concrete `IDataImporter` implementations are discovered through `TypeCache`; no registration table is required.
-- An importer writes the project's first asset of exactly its ScriptableObject type, found through `DataImporterEditorUtils.FindAsset`, and creates one next to the CSV file when there is none.
+- Concrete `ISpreadsheetImporter` implementations are discovered through `TypeCache`; no registration table is required.
+- An importer writes the project's first asset of exactly its ScriptableObject type, found through `SpreadsheetImporterEditorUtils.FindAsset`, and creates one next to the CSV file when there is none.
 - Use `ConfigsImporter<TConfig,TScriptableObject>` for one row per config entry, `SingleConfigImporter<TConfig,TScriptableObject>` for one config built from the whole sheet, and `SingleConfigSubListImporter<TConfig,TScriptableObject>` for Key/Value rows with nested row groups. Do not create a fourth base shape for a case one of these supports.
-- `IScriptableObjectImporter` is the optional discovery surface used by the window's Select Asset action. Keep it separate from `IDataImporter` so code-generating importers are not forced to own an asset type.
-- A new source kind is a branch in `DataImporterEditorUtils.Pull` that produces CSV text. Do not add a source interface until a consumer needs a source the package cannot own.
+- `IScriptableObjectImporter` is the optional discovery surface used by the window's Select Asset action. Keep it separate from `ISpreadsheetImporter` so code-generating importers are not forced to own an asset type.
+- A new source kind is a branch in `SpreadsheetImporterEditorUtils.Pull` that produces CSV text. Do not add a source interface until a consumer needs a source the package cannot own.
 
 ## Tests and verification
 

@@ -1,6 +1,6 @@
-using GameLovers.DataImporter.Editor;
+using GameLovers.SpreadsheetImporter.Editor;
 
-namespace GameLovers.DataImporter.Samples.DataImport.Editor
+namespace GameLovers.SpreadsheetImporter.Samples.SpreadsheetImport.Editor
 {
 	// Source: one tab of a link-shared Google Sheet, pasted as copied from the browser. Pull rewrites
 	// DataConfigs.csv from it; the cells show the list and pair formats the parser reads.

@@ -7,7 +7,7 @@ using System.Text;
 using GameLovers.GameData;
 using Newtonsoft.Json;
 
-namespace GameLovers.DataImporter.Editor
+namespace GameLovers.SpreadsheetImporter.Editor
 {
 	/// <summary>Reads and writes CSV text and converts cell values into typed fields.</summary>
 	public static class CsvParser

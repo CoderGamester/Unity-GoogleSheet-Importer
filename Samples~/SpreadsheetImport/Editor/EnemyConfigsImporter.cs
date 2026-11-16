@@ -1,6 +1,6 @@
-using GameLovers.DataImporter.Editor;
+using GameLovers.SpreadsheetImporter.Editor;
 
-namespace GameLovers.DataImporter.Samples.DataImport.Editor
+namespace GameLovers.SpreadsheetImporter.Samples.SpreadsheetImport.Editor
 {
 	// Source: the "Enemies" worksheet of an Excel workbook. Pull rewrites Enemies.csv from it.
 	public sealed class EnemyConfigsImporter : ConfigsImporter<EnemyConfig, EnemyConfigs>

@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using GameLovers.DataImporter;
-using GameLovers.DataImporter.Editor;
+using GameLovers.SpreadsheetImporter;
+using GameLovers.SpreadsheetImporter.Editor;
 using NUnit.Framework;
 
 // ReSharper disable ClassNeverInstantiated.Global
@@ -10,7 +10,7 @@ using NUnit.Framework;
 // ReSharper disable CheckNamespace
 // ReSharper disable UnassignedField.Global
 
-namespace GameLovers.DataImporter.Editor.Tests
+namespace GameLovers.SpreadsheetImporter.Editor.Tests
 {
 	public class CsvParserTest
 	{

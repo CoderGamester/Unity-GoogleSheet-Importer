@@ -11,22 +11,22 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.Networking;
 
-namespace GameLovers.DataImporter.Editor
+namespace GameLovers.SpreadsheetImporter.Editor
 {
 	/// <summary>
 	/// Discovers the project's importers and runs their pull and import steps, in the Editor or headless.
 	/// </summary>
-	public static class DataImporterEditorUtils
+	public static class SpreadsheetImporterEditorUtils
 	{
-		private const string MenuRoot = "Tools/GameLovers/Data Importer/";
+		private const string MenuRoot = "Tools/GameLovers/Spreadsheet Importer/";
 		private const string PublishedUrlMarker = "e";
 		private const int DownloadTimeoutSeconds = 30;
-		private const string ProgressTitle = "Data Importer";
-		private const string ImportersArg = "-dataImporters";
-		private const string PullArg = "-dataImportPull";
-		private const string SpreadsheetIdArg = "-dataImportSpreadsheetId";
-		private const string ReportArg = "-dataImportReport";
-		private const string ServiceAccountKeyArg = "-dataImportServiceAccountKey";
+		private const string ProgressTitle = "Spreadsheet Importer";
+		private const string ImportersArg = "-spreadsheetImporters";
+		private const string PullArg = "-spreadsheetPull";
+		private const string SpreadsheetIdArg = "-spreadsheetId";
+		private const string ReportArg = "-spreadsheetReport";
+		private const string ServiceAccountKeyArg = "-spreadsheetServiceAccountKey";
 		private const string ServiceAccountKeyVariable = "GOOGLE_APPLICATION_CREDENTIALS";
 		private const string SheetsApi = "https://sheets.googleapis.com/v4/spreadsheets";
 
@@ -60,9 +60,9 @@ namespace GameLovers.DataImporter.Editor
 		}
 
 		/// <summary>
-		/// Headless entry point for <c>-executeMethod</c>. Reads <c>-dataImporters A,B</c> (importer type names;
-		/// all importers when absent), <c>-dataImportPull</c>, <c>-dataImportSpreadsheetId &lt;id&gt;</c> and
-		/// <c>-dataImportReport &lt;path&gt;</c> from the command line, writes the JSON report when asked, and throws
+		/// Headless entry point for <c>-executeMethod</c>. Reads <c>-spreadsheetImporters A,B</c> (importer type names;
+		/// all importers when absent), <c>-spreadsheetPull</c>, <c>-spreadsheetId &lt;id&gt;</c> and
+		/// <c>-spreadsheetReport &lt;path&gt;</c> from the command line, writes the JSON report when asked, and throws
 		/// when any importer fails so the process exits non-zero.
 		/// </summary>
 		public static void RunFromCommandLine()
@@ -97,7 +97,7 @@ namespace GameLovers.DataImporter.Editor
 		/// Runs the given importers in order, optionally pulling each upstream first, and returns one result per
 		/// importer. Logs each failure as <c>path:line: message</c> and never throws; it does not save assets.
 		/// </summary>
-		public static ImportReport Run(IReadOnlyList<IDataImporter> importers, bool pull, string spreadsheetIdOverride)
+		public static ImportReport Run(IReadOnlyList<ISpreadsheetImporter> importers, bool pull, string spreadsheetIdOverride)
 		{
 			var report = new ImportReport();
 
@@ -147,15 +147,15 @@ namespace GameLovers.DataImporter.Editor
 		/// <summary>
 		/// Creates one instance of every concrete importer, sorted by import order and then type name.
 		/// </summary>
-		public static List<IDataImporter> DiscoverImporters()
+		public static List<ISpreadsheetImporter> DiscoverImporters()
 		{
-			var importers = new List<IDataImporter>();
+			var importers = new List<ISpreadsheetImporter>();
 
-			foreach (var type in TypeCache.GetTypesDerivedFrom<IDataImporter>())
+			foreach (var type in TypeCache.GetTypesDerivedFrom<ISpreadsheetImporter>())
 			{
 				if (!type.IsAbstract && !type.IsInterface)
 				{
-					importers.Add((IDataImporter)Activator.CreateInstance(type));
+					importers.Add((ISpreadsheetImporter)Activator.CreateInstance(type));
 				}
 			}
 
@@ -173,7 +173,7 @@ namespace GameLovers.DataImporter.Editor
 		/// Overwrites the importer's CSV file with the current content of its upstream source. A non-empty
 		/// <paramref name="spreadsheetIdOverride"/> replaces the spreadsheet id of a Google Sheet source.
 		/// </summary>
-		public static void Pull(IDataImporter importer, string spreadsheetIdOverride = null)
+		public static void Pull(ISpreadsheetImporter importer, string spreadsheetIdOverride = null)
 		{
 			var source = importer.Source;
 
@@ -193,10 +193,10 @@ namespace GameLovers.DataImporter.Editor
 
 		/// <summary>
 		/// Reads the importer's CSV file, runs the importer on it and returns the number of data rows, throwing a
-		/// <see cref="DataImportException"/> whose message starts with <c>path:line</c> when the file or a row
+		/// <see cref="SpreadsheetImportException"/> whose message starts with <c>path:line</c> when the file or a row
 		/// cannot be imported.
 		/// </summary>
-		public static int Import(IDataImporter importer)
+		public static int Import(ISpreadsheetImporter importer)
 		{
 			var path = importer.CsvPath;
 			var lines = new List<int>();
@@ -207,7 +207,7 @@ namespace GameLovers.DataImporter.Editor
 
 				if (rows.Count == 0)
 				{
-					throw new DataImportException(DataImportException.HeaderRow,
+					throw new SpreadsheetImportException(SpreadsheetImportException.HeaderRow,
 						"no data rows: the file needs a header line and at least one row");
 				}
 
@@ -215,15 +215,15 @@ namespace GameLovers.DataImporter.Editor
 
 				return rows.Count;
 			}
-			catch (DataImportException e)
+			catch (SpreadsheetImportException e)
 			{
 				var line = e.Row >= 0 && e.Row < lines.Count ? lines[e.Row] : 1;
 
-				throw new DataImportException(e.Row, $"{path}:{line}: {e.Message}", e);
+				throw new SpreadsheetImportException(e.Row, $"{path}:{line}: {e.Message}", e);
 			}
 			catch (Exception e)
 			{
-				throw new DataImportException(DataImportException.HeaderRow, $"{path}: {e.Message}", e);
+				throw new SpreadsheetImportException(SpreadsheetImportException.HeaderRow, $"{path}: {e.Message}", e);
 			}
 		}
 
@@ -274,11 +274,11 @@ namespace GameLovers.DataImporter.Editor
 		/// Picks the importers named in a comma-separated list of type names, keeping import order. Returns all of
 		/// them when <paramref name="names"/> is null and throws when a name matches no importer.
 		/// </summary>
-		internal static List<IDataImporter> SelectImporters(IReadOnlyList<IDataImporter> importers, string names)
+		internal static List<ISpreadsheetImporter> SelectImporters(IReadOnlyList<ISpreadsheetImporter> importers, string names)
 		{
 			if (names == null)
 			{
-				return new List<IDataImporter>(importers);
+				return new List<ISpreadsheetImporter>(importers);
 			}
 
 			var requested = new HashSet<string>(StringComparer.Ordinal);
@@ -503,7 +503,7 @@ namespace GameLovers.DataImporter.Editor
 									  : $"Google Sheets ({request.responseCode}): {detail}");
 		}
 
-		private static ImportReport RunAndSave(IReadOnlyList<IDataImporter> importers, bool pull, string spreadsheetIdOverride)
+		private static ImportReport RunAndSave(IReadOnlyList<ISpreadsheetImporter> importers, bool pull, string spreadsheetIdOverride)
 		{
 			var report = Run(importers, pull, spreadsheetIdOverride);
 
@@ -522,7 +522,7 @@ namespace GameLovers.DataImporter.Editor
 			}
 		}
 
-		private static int ImportOrder(IDataImporter importer)
+		private static int ImportOrder(ISpreadsheetImporter importer)
 		{
 			return importer.GetType().GetCustomAttribute<ImportOrderAttribute>()?.ImportOrder ?? int.MaxValue;
 		}
@@ -587,7 +587,7 @@ namespace GameLovers.DataImporter.Editor
 			if (contentType.Contains("text/html") || text.TrimStart().StartsWith("<"))
 			{
 				throw new IOException($"{url} returned a web page instead of CSV: the sheet is private. Sign in with Google in " +
-									  "the Data Importer window, or share the sheet as 'Anyone with the link'");
+									  "the Spreadsheet Importer window, or share the sheet as 'Anyone with the link'");
 			}
 
 			text = text.Replace("\r\n", "\n");

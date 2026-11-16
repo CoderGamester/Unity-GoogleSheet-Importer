@@ -2,13 +2,13 @@ using System.IO;
 using UnityEditor;
 using UnityEngine;
 
-namespace GameLovers.DataImporter.Samples.DataImport.Editor
+namespace GameLovers.SpreadsheetImporter.Samples.SpreadsheetImport.Editor
 {
 	internal static class PayloadComparison
 	{
 		// Loads the JSON payload the way a player would and compares it with the asset, so the two outputs of
 		// the same import can be checked against each other.
-		[MenuItem("Tools/GameLovers/Data Importer Samples/Compare Asset And JSON Payload")]
+		[MenuItem("Tools/GameLovers/Spreadsheet Importer Samples/Compare Asset And JSON Payload")]
 		private static void Compare()
 		{
 			var assetPath = SampleData.Path(nameof(ItemConfigs) + ".asset");
@@ -18,7 +18,7 @@ namespace GameLovers.DataImporter.Samples.DataImport.Editor
 
 			if (asset == null || json == null)
 			{
-				EditorUtility.DisplayDialog("Data Importer sample", "Run Tools > GameLovers > Data Importer > Import All first.", "OK");
+				EditorUtility.DisplayDialog("Spreadsheet Importer sample", "Run Tools > GameLovers > Spreadsheet Importer > Import All first.", "OK");
 				return;
 			}
 
@@ -32,7 +32,7 @@ namespace GameLovers.DataImporter.Samples.DataImport.Editor
 						  $"Same content: {(identical ? "yes" : "NO")}";
 
 			Object.DestroyImmediate(fromJson);
-			EditorUtility.DisplayDialog("Data Importer sample", message, "OK");
+			EditorUtility.DisplayDialog("Spreadsheet Importer sample", message, "OK");
 		}
 	}
 }

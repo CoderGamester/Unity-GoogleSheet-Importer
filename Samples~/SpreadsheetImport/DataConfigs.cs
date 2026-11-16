@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using GameLovers.GameData;
 using UnityEngine;
 
-namespace GameLovers.DataImporter.Samples.DataImport
+namespace GameLovers.SpreadsheetImporter.Samples.SpreadsheetImport
 {
 	[Serializable]
 	public struct DataConfig

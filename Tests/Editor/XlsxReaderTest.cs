@@ -5,7 +5,7 @@ using System.IO.Compression;
 using System.Text;
 using NUnit.Framework;
 
-namespace GameLovers.DataImporter.Editor.Tests
+namespace GameLovers.SpreadsheetImporter.Editor.Tests
 {
 	public class XlsxReaderTest
 	{

@@ -1,9 +1,8 @@
 {
-    "name": "GameLovers.DataImporter.Samples.DataImport.Editor",
+    "name": "GameLovers.SpreadsheetImporter.Editor",
     "rootNamespace": "",
     "references": [
-        "GameLovers.DataImporter.Samples.DataImport",
-        "GameLovers.DataImporter.Editor",
+        "GUID:97e8c5e426b7946028b98691397a84d4",
         "GameLovers.GameData"
     ],
     "includePlatforms": [
@@ -13,7 +12,7 @@
     "allowUnsafeCode": false,
     "overrideReferences": false,
     "precompiledReferences": [],
-    "autoReferenced": false,
+    "autoReferenced": true,
     "defineConstraints": [],
     "versionDefines": [],
     "noEngineReferences": false
