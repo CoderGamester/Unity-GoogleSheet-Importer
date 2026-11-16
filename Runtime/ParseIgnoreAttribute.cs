@@ -1,11 +1,10 @@
 using System;
 
-// ReSharper disable once CheckNamespace
-
-namespace GameLovers.GoogleSheetImporter
+namespace GameLovers.DataImporter
 {
 	/// <summary>
-	/// Attribute to ignore the parsing of a field in <seealso cref="CsvParse"/>
+	/// Marks a config field the importer must leave untouched, even when the imported sheet has a column
+	/// with the same name.
 	/// </summary>
 	[AttributeUsage(AttributeTargets.Field)]
 	public class ParseIgnoreAttribute : Attribute

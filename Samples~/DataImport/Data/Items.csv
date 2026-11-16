@@ -1,0 +1,5 @@
+Id,Name,Rarity,Power,Cost,Tags,$Notes
+1,Wooden Sword,Common,4.5,10,"1,2",starter weapon
+2,Iron Shield,Rare,2,25,2,
+3,"Boots, Swift",Epic,1.25,60,"1,3",a quoted name that contains a comma
+4,Healing Potion,Common,0,5,,no tags

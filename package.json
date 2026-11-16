@@ -1,11 +1,11 @@
 {
-  "name": "com.gamelovers.googlesheetimporter",
-  "displayName": "GoogleSheet Importer",
+  "name": "com.gamelovers.dataimporter",
+  "displayName": "GameLovers DataImporter",
   "author": "Miguel Tomas",
   "version": "0.7.3",
   "unity": "6000.0",
   "license": "MIT",
-  "description": "Editor tooling that imports published Google Sheets as CSV into ScriptableObject configuration assets, with extensible importer and parser APIs.",
+  "description": "Editor tooling that imports CSV files, Excel worksheets, and Google Sheets into ScriptableObject configuration assets, with an optional JSON payload for remotely delivered content.",
   "type": "tool",
   "dependencies": {
     "com.unity.nuget.newtonsoft-json": "2.0.0",
@@ -13,9 +13,9 @@
   },
   "samples": [
     {
-      "displayName": "Importers Example",
-      "description": "Runnable Editor-only examples for row-list, single-config, and generated-ID Google Sheet importers.",
-      "path": "Samples~/Importers Example"
+      "displayName": "Data Import",
+      "description": "One importer per source: a CSV file edited in the project, an Excel worksheet, and two Google Sheet tabs, with the imported assets and a JSON payload to compare against.",
+      "path": "Samples~/DataImport"
     }
   ]
 }

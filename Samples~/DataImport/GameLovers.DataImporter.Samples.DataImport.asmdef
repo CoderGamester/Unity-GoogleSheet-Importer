@@ -1,0 +1,16 @@
+{
+    "name": "GameLovers.DataImporter.Samples.DataImport",
+    "rootNamespace": "",
+    "references": [
+        "GameLovers.GameData"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

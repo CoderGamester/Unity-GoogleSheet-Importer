@@ -1,0 +1,19 @@
+{
+    "name": "GameLovers.DataImporter.Editor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:97e8c5e426b7946028b98691397a84d4",
+        "GameLovers.GameData"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
