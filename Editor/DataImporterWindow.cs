@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -20,6 +21,9 @@ namespace GameLovers.DataImporter.Editor
 			"Use it to pull from a duplicate of the sheet without changing the importers.";
 		private const string NoGoogleSheetTooltip = "No importer has a Google Sheet source";
 		private const string GoogleSheetKind = "Google Sheet";
+		private const string KeyTooltip =
+			"JSON key of a Google service account, used to pull private sheets shared with that account. Stored for " +
+			"you and this project in EditorPrefs, never in the project. Keep the file outside the project.";
 
 		[SerializeField] private string _spreadsheetIdOverride;
 
@@ -27,6 +31,9 @@ namespace GameLovers.DataImporter.Editor
 			new Dictionary<string, (ImportResult Result, DateTime Time)>();
 
 		private TextField _spreadsheetId;
+		private VisualElement _keyRow;
+		private TextField _keyField;
+		private VisualElement _keyStatus;
 		private Label _summary;
 		private ScrollView _rows;
 
@@ -45,6 +52,19 @@ namespace GameLovers.DataImporter.Editor
 			_spreadsheetId = new TextField("Spreadsheet ID override") { value = _spreadsheetIdOverride };
 			_rows = new ScrollView();
 
+			_keyRow = new VisualElement();
+			_keyField = new TextField("Service account key") { value = DataImporterEditorUtils.ServiceAccountKeySetting };
+			_keyStatus = new VisualElement();
+			_keyRow.AddToClassList("importer-key");
+			_keyField.AddToClassList("importer-key__field");
+			_keyField.tooltip = KeyTooltip;
+			_keyField.RegisterValueChangedCallback(change =>
+			{
+				DataImporterEditorUtils.ServiceAccountKeySetting = change.newValue;
+				UpdateKeyStatus();
+			});
+			_keyRow.Add(_keyField);
+			_keyRow.Add(new Button(BrowseKey) { text = "Browse", tooltip = "Pick the service account's JSON key file" });
 			_spreadsheetId.RegisterValueChangedCallback(change => _spreadsheetIdOverride = change.newValue);
 			toolbar.AddToClassList("importer-toolbar");
 			toolbar.Add(new Button(() => Run(DataImporterEditorUtils.DiscoverImporters(), true)) { text = "Pull And Import All" });
@@ -54,7 +74,10 @@ namespace GameLovers.DataImporter.Editor
 			rootVisualElement.AddToClassList("importer-window");
 			rootVisualElement.Add(toolbar);
 			rootVisualElement.Add(_spreadsheetId);
+			rootVisualElement.Add(_keyRow);
+			rootVisualElement.Add(_keyStatus);
 			rootVisualElement.Add(_rows);
+			UpdateKeyStatus();
 			RebuildRows();
 		}
 
@@ -84,6 +107,8 @@ namespace GameLovers.DataImporter.Editor
 			_summary.text = failed > 0 ? $"{importers.Count} importers, {failed} failed" : $"{importers.Count} importers";
 			_spreadsheetId.SetEnabled(hasGoogleSheet);
 			_spreadsheetId.tooltip = hasGoogleSheet ? OverrideTooltip : NoGoogleSheetTooltip;
+			_keyRow.SetEnabled(hasGoogleSheet);
+			_keyField.tooltip = hasGoogleSheet ? KeyTooltip : NoGoogleSheetTooltip;
 
 			if (importers.Count == 0)
 			{
@@ -167,6 +192,60 @@ namespace GameLovers.DataImporter.Editor
 			AssetDatabase.SaveAssets();
 			AssetDatabase.Refresh();
 			RebuildRows();
+		}
+
+		private void BrowseKey()
+		{
+			var path = EditorUtility.OpenFilePanel("Service account key", string.Empty, "json");
+
+			if (!string.IsNullOrEmpty(path))
+			{
+				_keyField.value = path;
+			}
+		}
+
+		private void UpdateKeyStatus()
+		{
+			var setting = DataImporterEditorUtils.ServiceAccountKeySetting;
+			var environment = DataImporterEditorUtils.ServiceAccountKeyEnvironment;
+			var path = DataImporterEditorUtils.ResolveServiceAccountKey(Array.Empty<string>(), setting, environment);
+
+			_keyStatus.Clear();
+
+			if (path == null)
+			{
+				_keyStatus.Add(StatusLabel("No key: only sheets shared as \"Anyone with the link\" can be pulled"));
+
+				return;
+			}
+
+			var origin = string.IsNullOrWhiteSpace(setting) ? "GOOGLE_APPLICATION_CREDENTIALS" : "this field";
+
+			try
+			{
+				if (DataImporterEditorUtils.IsInsideProject(path))
+				{
+					_keyStatus.Add(new HelpBox($"The key from {origin} is inside the project. Move it out so it cannot be committed.",
+						HelpBoxMessageType.Warning));
+				}
+
+				var account = GoogleServiceAccount.ClientEmail(File.ReadAllText(path));
+
+				_keyStatus.Add(StatusLabel($"Signs in as {account} (key from {origin}). Share private sheets with that address."));
+			}
+			catch (Exception e)
+			{
+				_keyStatus.Add(new HelpBox($"The key from {origin} cannot be used: {e.Message}", HelpBoxMessageType.Error));
+			}
+		}
+
+		private static Label StatusLabel(string text)
+		{
+			var label = new Label(text);
+
+			label.AddToClassList("importer-key__status");
+
+			return label;
 		}
 
 		private static string SourceKind(string source)

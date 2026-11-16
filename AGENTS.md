@@ -27,7 +27,10 @@ This guide adds package-specific rules to the host repository guide. Consumer us
 - Progress bars are skipped in batchmode. Cancelling a download aborts the request and fails only that importer.
 - A CSV file without data rows is an import error, so an emptied sheet or worksheet cannot silently empty an asset.
 - Report a row failure by throwing `DataImportException` with the zero-based data row. Only `DataImporterEditorUtils.Import` turns the row into a file line, using the line map `CsvParser.ConvertCsv` fills.
-- Google Sheet URLs are rewritten to public CSV export URLs from the spreadsheet id and `gid` wherever they appear in the URL, including the account-scoped `/u/<n>/` form. A published-to-web URL is rejected. The package has no authentication flow, so the sheet must be link-shared; an HTML response is an error, not data.
+- Google Sheet URLs are rewritten to public CSV export URLs from the spreadsheet id and `gid` wherever they appear in the URL, including the account-scoped `/u/<n>/` form. A published-to-web URL is rejected. An HTML response is an error, not data.
+- A private sheet is pulled with a service-account key: `GoogleServiceAccount` signs an RS256 assertion for the `drive.readonly` scope, `DataImporterEditorUtils` trades it for an access token once per pull and sends it to the same CSV export URL. Without a key, downloads stay anonymous. The key path comes from `-dataImportServiceAccountKey`, then the window's EditorPrefs setting, then `GOOGLE_APPLICATION_CREDENTIALS`.
+- Never log, report, or store the key's content, the assertion, or the token. Only the key's path is stored, in EditorPrefs. A key inside the project folder gets a warning, not a refusal, because CI may write the key into its workspace.
+- The Editor's Mono runtime cannot import PKCS#8 keys (`RSA.ImportPkcs8PrivateKey` throws `PlatformNotSupportedException`), so `GoogleServiceAccount.ReadPrivateKey` reads the DER itself. Keep it dependency-free.
 - The spreadsheet-id override is a per-pull argument and must not mutate importer definitions.
 
 ## Parser invariants

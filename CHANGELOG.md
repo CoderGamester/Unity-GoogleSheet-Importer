@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Added `DataImporterEditorUtils.RunFromCommandLine` for batchmode runs of selected importers, with an optional pull, a spreadsheet-id override, and a JSON report.
 - Added the Data Importer window under `Tools/GameLovers/Data Importer`, with a source badge and the last result on each importer's row.
 - Added a cancellable progress bar to Google Sheet pulls.
+- Added private Google Sheets: pulls sign in with a service-account key from the command line, the window, or `GOOGLE_APPLICATION_CREDENTIALS`.
 - Added the Data Import sample with CSV, Excel, and Google Sheet sources.
 
 **Changed**:

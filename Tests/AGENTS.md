@@ -64,8 +64,9 @@ Benchmarks use the inverted check: removing the workload from the measured body 
 
 ## Current suite
 
-- The package has one Editor-only test assembly with three fixtures: `CsvParserTest` (CSV reading and writing, cell parsing, column validation), `XlsxReaderTest` (Excel worksheets), and `DataImporterEditorUtilsTest` (Google Sheet URL rewriting, `Run` results, the report format, and command-line arguments).
-- The test assembly references the package Editor assembly, where the parser and readers live, plus the runtime and GameData assemblies. `InternalsVisibleTo` exposes the command-line helpers to it. Do not claim coverage of downloads, importer discovery, the window, or `AssetDatabase` writes from this suite.
+- The package has one Editor-only test assembly with four fixtures: `CsvParserTest` (CSV reading and writing, cell parsing, column validation), `XlsxReaderTest` (Excel worksheets), `DataImporterEditorUtilsTest` (Google Sheet URL rewriting, `Run` results, the report format, command-line arguments, and key-path resolution), and `GoogleServiceAccountTest` (service-account key reading and the signed assertion).
+- `GoogleServiceAccountTest` generates its RSA key in memory and encodes it as PKCS#8 itself. Never commit a private key or a service-account JSON file, even a throwaway one: the repository is public and secret scanners flag them.
+- The test assembly references the package Editor assembly, where the parser and readers live, plus the runtime and GameData assemblies and Newtonsoft.Json. `InternalsVisibleTo` exposes the command-line helpers to it. Do not claim coverage of downloads, importer discovery, the window, or `AssetDatabase` writes from this suite.
 - `XlsxReaderTest` writes each workbook it needs into the temp folder from inline XML and deletes it in teardown. Do not add binary workbook fixtures.
 - Test importers are NSubstitute substitutes of `IDataImporter`. Never declare a concrete `IDataImporter` class in the test assembly: importer discovery would find it, and it would appear in the window and in `ImportAll`.
 

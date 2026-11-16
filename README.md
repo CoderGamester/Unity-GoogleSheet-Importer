@@ -86,7 +86,13 @@ The CSV file is the one input of an import. A spreadsheet is an optional upstrea
 | Google Sheet tab | `Source =>` the tab's URL as copied from the browser | Pull |
 
 - **Excel:** values only, read without a third-party library. Formulas import as their last calculated value, dates as `yyyy-MM-dd`, booleans as `TRUE`/`FALSE`. Without `#SheetName` the first worksheet is read.
-- **Google Sheets:** use the URL of the sheet's edit page, not a published-to-web link. The sheet must be shared as "Anyone with the link". A link-shared sheet is public data; never place secrets in it.
+- **Google Sheets:** use the URL of the sheet's edit page, not a published-to-web link. Without a key, the sheet must be shared as "Anyone with the link", which makes it public data.
+- **Private Google Sheets:** create a service account in Google Cloud, download its JSON key, and share the sheet with the account's `client_email` as a Viewer. Point the importer at the key with one of these, first match wins:
+  1. `-dataImportServiceAccountKey <path>` on the command line.
+  2. The **Service account key** field in the window. It is stored for you and this project in EditorPrefs, not in the project.
+  3. The `GOOGLE_APPLICATION_CREDENTIALS` environment variable, the usual choice for CI.
+
+  Keep the key file outside the project: anyone with it can read every sheet shared with the account. The package warns when the key is inside the project folder.
 
 ## Outputs
 
@@ -131,6 +137,7 @@ Unity -batchmode -projectPath . -executeMethod GameLovers.DataImporter.Editor.Da
 | `-dataImporters ItemConfigsImporter,EnemyConfigsImporter` | Run only these importers, by type name; an unknown name fails the run and lists the available importers |
 | `-dataImportPull` | Pull each upstream source into its CSV file before importing |
 | `-dataImportSpreadsheetId <id>` | Pull every Google Sheet source from another spreadsheet, such as a duplicate |
+| `-dataImportServiceAccountKey <path>` | Sign in with a service-account key to pull private Google Sheets |
 | `-dataImportReport <path>` | Write a JSON report; an earlier report at that path is deleted first |
 
 The run exits non-zero when any importer fails. The report lists every importer, and each error names the file and line:

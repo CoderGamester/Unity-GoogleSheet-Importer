@@ -123,6 +123,22 @@ namespace GameLovers.DataImporter.Editor.Tests
 			Assert.AreEqual("-abc_1", DataImporterEditorUtils.ArgValue(args, "-dataImportSpreadsheetId"));
 		}
 
+		[TestCase(new[] { "Unity", "-dataImportServiceAccountKey", "/keys/arg.json" }, "/keys/window.json", "/keys/env.json",
+			"/keys/arg.json")]
+		[TestCase(new[] { "Unity" }, "/keys/window.json", "/keys/env.json", "/keys/window.json")]
+		[TestCase(new[] { "Unity" }, " ", "/keys/env.json", "/keys/env.json")]
+		[TestCase(new[] { "Unity" }, "", "", null)]
+		// ADMIT: DataImporterEditorUtils.ResolveServiceAccountKey prefers the command line, then the window setting,
+		// then GOOGLE_APPLICATION_CREDENTIALS, and downloads anonymously without any.
+		// RCR: DataImporterEditorUtils.cs ResolveServiceAccountKey — change `if (!string.IsNullOrWhiteSpace(setting))`
+		// to `if (string.IsNullOrWhiteSpace(environment) && !string.IsNullOrWhiteSpace(setting))` → RED (the
+		// window.json case returns env.json). 2026-11-16
+		public void ResolveServiceAccountKey_Sources_PrefersCommandLineThenSettingThenEnvironment(string[] args,
+			string setting, string environment, string expected)
+		{
+			Assert.AreEqual(expected, DataImporterEditorUtils.ResolveServiceAccountKey(args, setting, environment));
+		}
+
 		[Test]
 		// ADMIT: DataImporterEditorUtils.ArgValue names the flag that is missing its value.
 		// RCR: DataImporterEditorUtils.cs ArgValue — change `index + 1 >= args.Length` to `index + 1 > args.Length`

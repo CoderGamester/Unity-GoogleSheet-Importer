@@ -5,6 +5,8 @@ using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -24,6 +26,31 @@ namespace GameLovers.DataImporter.Editor
 		private const string PullArg = "-dataImportPull";
 		private const string SpreadsheetIdArg = "-dataImportSpreadsheetId";
 		private const string ReportArg = "-dataImportReport";
+		private const string ServiceAccountKeyArg = "-dataImportServiceAccountKey";
+		private const string ServiceAccountKeyVariable = "GOOGLE_APPLICATION_CREDENTIALS";
+		private const string ServiceAccountKeyPrefsPrefix = "GameLovers.DataImporter.ServiceAccountKey:";
+
+		/// <summary>The key path set in the window, kept per user and project in EditorPrefs.</summary>
+		internal static string ServiceAccountKeySetting
+		{
+			get => EditorPrefs.GetString(ServiceAccountKeyPrefsKey, string.Empty);
+			set
+			{
+				if (string.IsNullOrWhiteSpace(value))
+				{
+					EditorPrefs.DeleteKey(ServiceAccountKeyPrefsKey);
+				}
+				else
+				{
+					EditorPrefs.SetString(ServiceAccountKeyPrefsKey, value.Trim());
+				}
+			}
+		}
+
+		/// <summary>The value of the <c>GOOGLE_APPLICATION_CREDENTIALS</c> environment variable, or null.</summary>
+		internal static string ServiceAccountKeyEnvironment => Environment.GetEnvironmentVariable(ServiceAccountKeyVariable);
+
+		private static string ServiceAccountKeyPrefsKey => ServiceAccountKeyPrefsPrefix + Application.dataPath;
 
 		/// <summary>
 		/// Imports every CSV file into its target and throws when any importer fails, so a batchmode
@@ -175,7 +202,7 @@ namespace GameLovers.DataImporter.Editor
 			}
 
 			var csv = source.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-						  ? DownloadCsv(GoogleSheetCsvUrl(source, spreadsheetIdOverride))
+						  ? DownloadCsv(GoogleSheetCsvUrl(source, spreadsheetIdOverride), ServiceAccountKeyPath())
 						  : ReadWorkbookAsCsv(source);
 
 			Directory.CreateDirectory(Path.GetDirectoryName(importer.CsvPath));
@@ -313,6 +340,97 @@ namespace GameLovers.DataImporter.Editor
 			return args[index + 1];
 		}
 
+		/// <summary>The key file Google Sheet pulls sign in with, or null to download anonymously.</summary>
+		internal static string ServiceAccountKeyPath()
+		{
+			return ResolveServiceAccountKey(Environment.GetCommandLineArgs(), ServiceAccountKeySetting, ServiceAccountKeyEnvironment);
+		}
+
+		/// <summary>Picks the key path from the command line, the window setting, then the environment.</summary>
+		internal static string ResolveServiceAccountKey(string[] args, string setting, string environment)
+		{
+			var argument = ArgValue(args, ServiceAccountKeyArg);
+
+			if (!string.IsNullOrWhiteSpace(argument))
+			{
+				return argument.Trim();
+			}
+
+			if (!string.IsNullOrWhiteSpace(setting))
+			{
+				return setting.Trim();
+			}
+
+			return string.IsNullOrWhiteSpace(environment) ? null : environment.Trim();
+		}
+
+		/// <summary>True when <paramref name="path"/> is inside the project, where it could be committed.</summary>
+		internal static bool IsInsideProject(string path)
+		{
+			var project = Path.GetFullPath(Directory.GetCurrentDirectory()).TrimEnd(Path.DirectorySeparatorChar) +
+						  Path.DirectorySeparatorChar;
+
+			return Path.GetFullPath(path).StartsWith(project, StringComparison.Ordinal);
+		}
+
+		private static string ReadServiceAccountKey(string path)
+		{
+			if (!File.Exists(path))
+			{
+				throw new FileNotFoundException($"Service-account key not found: {path}");
+			}
+
+			if (IsInsideProject(path))
+			{
+				Debug.LogWarning($"The service-account key {path} is inside the project. Keep it outside so it cannot be committed.");
+			}
+
+			return File.ReadAllText(path);
+		}
+
+		private static string RequestAccessToken(string keyJson)
+		{
+			var tokenUri = GoogleServiceAccount.TokenUri(keyJson);
+			var form = new WWWForm();
+
+			form.AddField("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer");
+			form.AddField("assertion", GoogleServiceAccount.CreateAssertion(keyJson, DateTime.UtcNow));
+
+			using var request = UnityWebRequest.Post(tokenUri, form);
+
+			Send(request, "Signing in with the service-account key");
+
+			var body = request.downloadHandler?.text ?? string.Empty;
+
+			if (request.result != UnityWebRequest.Result.Success)
+			{
+				throw new IOException($"Google refused the service-account sign-in ({request.responseCode}): {TokenError(body, request.error)}");
+			}
+
+			var token = JObject.Parse(body).Value<string>("access_token");
+
+			if (string.IsNullOrEmpty(token))
+			{
+				throw new IOException("Google's sign-in response has no access token");
+			}
+
+			return token;
+		}
+
+		private static string TokenError(string body, string fallback)
+		{
+			try
+			{
+				var error = JObject.Parse(body);
+
+				return $"{error.Value<string>("error")}: {error.Value<string>("error_description")}";
+			}
+			catch (JsonException)
+			{
+				return fallback;
+			}
+		}
+
 		private static ImportReport RunAndSave(IReadOnlyList<IDataImporter> importers, bool pull, string spreadsheetIdOverride)
 		{
 			var report = Run(importers, pull, spreadsheetIdOverride);
@@ -353,10 +471,8 @@ namespace GameLovers.DataImporter.Editor
 			}
 		}
 
-		private static string DownloadCsv(string url)
+		private static void Send(UnityWebRequest request, string info)
 		{
-			using var request = UnityWebRequest.Get(url);
-
 			request.timeout = DownloadTimeoutSeconds;
 
 			var operation = request.SendWebRequest();
@@ -366,11 +482,11 @@ namespace GameLovers.DataImporter.Editor
 				while (!operation.isDone)
 				{
 					if (!Application.isBatchMode &&
-						EditorUtility.DisplayCancelableProgressBar(ProgressTitle, $"Downloading {url}", request.downloadProgress))
+						EditorUtility.DisplayCancelableProgressBar(ProgressTitle, info, request.downloadProgress))
 					{
 						request.Abort();
 
-						throw new OperationCanceledException($"Download cancelled for {url}");
+						throw new OperationCanceledException($"Cancelled: {info}");
 					}
 
 					Thread.Sleep(10);
@@ -379,6 +495,27 @@ namespace GameLovers.DataImporter.Editor
 			finally
 			{
 				ClearProgress();
+			}
+		}
+
+		private static string DownloadCsv(string url, string keyPath)
+		{
+			var keyJson = keyPath == null ? null : ReadServiceAccountKey(keyPath);
+			var account = keyJson == null ? null : GoogleServiceAccount.ClientEmail(keyJson);
+
+			using var request = UnityWebRequest.Get(url);
+
+			if (keyJson != null)
+			{
+				request.SetRequestHeader("Authorization", $"Bearer {RequestAccessToken(keyJson)}");
+			}
+
+			Send(request, $"Downloading {url}");
+
+			if (account != null && request.responseCode is 401 or 403 or 404)
+			{
+				throw new IOException($"{url}: the service account {account} cannot read this sheet ({request.responseCode}); " +
+									  "share the sheet with that address");
 			}
 
 			if (request.result != UnityWebRequest.Result.Success)
@@ -391,7 +528,10 @@ namespace GameLovers.DataImporter.Editor
 
 			if (contentType.Contains("text/html") || text.TrimStart().StartsWith("<"))
 			{
-				throw new IOException($"{url} returned a web page instead of CSV: share the sheet as 'Anyone with the link'");
+				throw new IOException(account == null
+										  ? $"{url} returned a web page instead of CSV: share the sheet as 'Anyone with the link', " +
+											"or set a service-account key for a private sheet"
+										  : $"{url} returned a web page instead of CSV: share the sheet with {account}");
 			}
 
 			text = text.Replace("\r\n", "\n");

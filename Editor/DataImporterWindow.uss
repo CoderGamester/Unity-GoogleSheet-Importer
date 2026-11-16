@@ -14,6 +14,22 @@
     opacity: 0.7;
 }
 
+.importer-key {
+    flex-direction: row;
+    align-items: center;
+}
+
+.importer-key__field {
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.importer-key__status {
+    margin: 0 4px 4px 4px;
+    opacity: 0.7;
+    white-space: normal;
+}
+
 .importer-row {
     padding: 6px 2px;
     border-bottom-width: 1px;
