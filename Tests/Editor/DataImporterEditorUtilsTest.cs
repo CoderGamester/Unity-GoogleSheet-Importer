@@ -1,10 +1,139 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using NSubstitute;
 using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace GameLovers.DataImporter.Editor.Tests
 {
 	public class DataImporterEditorUtilsTest
 	{
 		private const string Sheet = "https://docs.google.com/spreadsheets/d/SHEET_id-1";
+
+		private IDataImporter _importer;
+		private IDataImporter _otherImporter;
+		private string _csvPath;
+
+		[SetUp]
+		public void SetUp()
+		{
+			_csvPath = Path.Combine(Path.GetTempPath(), $"DataImporterTest-{Guid.NewGuid():N}.csv");
+			File.WriteAllText(_csvPath, "Name\nA\nB\n");
+			_importer = Substitute.For<IDataImporter>();
+			_otherImporter = Substitute.For<IDataImporter, IScriptableObjectImporter>();
+			_importer.CsvPath.Returns(_csvPath);
+			_otherImporter.CsvPath.Returns(_csvPath);
+		}
+
+		[TearDown]
+		public void TearDown()
+		{
+			File.Delete(_csvPath);
+		}
+
+		[Test]
+		// ADMIT: DataImporterEditorUtils.Run records a failing importer's path:line error, counts it, and still
+		// runs the importers after it.
+		// RCR: DataImporterEditorUtils.cs Run — delete `report.Failed++;` → RED (Failed is 0). 2026-11-16
+		public void Run_OneImporterFails_RecordsTheErrorAndRunsTheNextImporter()
+		{
+			_importer.When(importer => importer.Import(Arg.Any<List<Dictionary<string, string>>>()))
+				.Do(_ => throw new DataImportException(1, "bad row"));
+			LogAssert.Expect(LogType.Error, $"{_csvPath}:3: bad row");
+
+			var report = DataImporterEditorUtils.Run(new[] { _importer, _otherImporter }, false, null);
+
+			Assert.AreEqual(1, report.Failed);
+			Assert.AreEqual($"{_csvPath}:3: bad row", report.Results[0].Error);
+			Assert.AreEqual(2, report.Results[1].Rows);
+		}
+
+		[Test]
+		// ADMIT: DataImporterEditorUtils.Run reports how many data rows each importer imported.
+		// RCR: DataImporterEditorUtils.cs Run — change `result.Rows = Import(importer);` to `Import(importer);`
+		// → RED (Rows is 0). 2026-11-16
+		public void Run_SuccessfulImport_ReportsTheRowCountWithoutError()
+		{
+			var report = DataImporterEditorUtils.Run(new[] { _importer }, false, null);
+
+			Assert.AreEqual(0, report.Failed);
+			Assert.AreEqual(2, report.Results[0].Rows);
+			Assert.IsTrue(string.IsNullOrEmpty(report.Results[0].Error));
+		}
+
+		[Test]
+		// ADMIT: ImportReport serializes its counters under the field names agents read from the JSON report.
+		// RCR: ImportReport.cs ImportReport — change `public int Failed;` to `public int Failed { get; set; }`
+		// → RED (the JSON has no Failed field). 2026-11-16
+		public void ImportReport_ToJson_WritesTheReportFieldNames()
+		{
+			var report = new ImportReport { Failed = 1 };
+
+			report.Results.Add(new ImportResult { Importer = "ItemsImporter", Rows = 2, Error = "x.csv:3: bad" });
+
+			var json = JsonUtility.ToJson(report);
+
+			StringAssert.Contains("\"Failed\":1", json);
+			StringAssert.Contains("\"Importer\":\"ItemsImporter\"", json);
+			StringAssert.Contains("\"Rows\":2", json);
+			StringAssert.Contains("\"Error\":\"x.csv:3: bad\"", json);
+		}
+
+		[Test]
+		// ADMIT: DataImporterEditorUtils.SelectImporters keeps only the importers named on the command line.
+		// RCR: DataImporterEditorUtils.cs SelectImporters — change `if (names == null)` to `if (names != "")`
+		// → RED (both importers are returned). 2026-11-16
+		public void SelectImporters_OneName_ReturnsOnlyThatImporter()
+		{
+			Assume.That(_otherImporter.GetType().Name, Is.Not.EqualTo(_importer.GetType().Name));
+
+			var selected = DataImporterEditorUtils.SelectImporters(new[] { _importer, _otherImporter },
+				_otherImporter.GetType().Name);
+
+			CollectionAssert.AreEqual(new[] { _otherImporter }, selected);
+		}
+
+		[Test]
+		// ADMIT: DataImporterEditorUtils.SelectImporters fails on a name that matches no importer instead of
+		// silently running fewer importers.
+		// RCR: DataImporterEditorUtils.cs SelectImporters — change `if (requested.Count > 0)` to
+		// `if (requested.Count > 1)` → RED (no ArgumentException). 2026-11-16
+		public void SelectImporters_UnknownName_ThrowsListingTheAvailableImporters()
+		{
+			var available = _importer.GetType().Name;
+
+			var exception = Assert.Throws<ArgumentException>(() =>
+				DataImporterEditorUtils.SelectImporters(new[] { _importer }, $"{available}, Missing"));
+
+			StringAssert.Contains("Missing", exception.Message);
+			StringAssert.Contains($"available: {available}", exception.Message);
+		}
+
+		[Test]
+		// ADMIT: DataImporterEditorUtils.ArgValue returns the argument after the flag even when it starts with a
+		// dash, as a Google spreadsheet id can.
+		// RCR: DataImporterEditorUtils.cs ArgValue — change `index + 1 >= args.Length` to
+		// `index + 1 >= args.Length || args[index + 1].StartsWith("-")` → RED (ArgumentException). 2026-11-16
+		public void ArgValue_ValueStartingWithDash_ReturnsIt()
+		{
+			var args = new[] { "Unity", "-dataImportSpreadsheetId", "-abc_1", "-quit" };
+
+			Assert.AreEqual("-abc_1", DataImporterEditorUtils.ArgValue(args, "-dataImportSpreadsheetId"));
+		}
+
+		[Test]
+		// ADMIT: DataImporterEditorUtils.ArgValue names the flag that is missing its value.
+		// RCR: DataImporterEditorUtils.cs ArgValue — change `index + 1 >= args.Length` to `index + 1 > args.Length`
+		// → RED (IndexOutOfRangeException instead of ArgumentException). 2026-11-16
+		public void ArgValue_FlagWithoutValue_ThrowsNamingTheFlag()
+		{
+			var exception = Assert.Throws<ArgumentException>(() =>
+				DataImporterEditorUtils.ArgValue(new[] { "Unity", "-dataImportReport" }, "-dataImportReport"));
+
+			StringAssert.Contains("-dataImportReport", exception.Message);
+		}
 
 		[TestCase(Sheet + "/edit#gid=5", "5")]
 		[TestCase(Sheet + "/edit?gid=7#gid=7", "7")]

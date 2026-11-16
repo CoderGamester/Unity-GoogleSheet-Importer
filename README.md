@@ -123,20 +123,35 @@ Three base classes cover the sheet shapes: `ConfigsImporter` (one row per config
 Edit the CSV file, then import without opening the Editor:
 
 ```bash
-Unity -batchmode -projectPath . -executeMethod GameLovers.DataImporter.Editor.DataImporterEditorUtils.ImportAll -quit -logFile import.log
+Unity -batchmode -projectPath . -executeMethod GameLovers.DataImporter.Editor.DataImporterEditorUtils.RunFromCommandLine -dataImportReport Logs/data-import.json -quit -logFile import.log
 ```
 
-The run exits non-zero when any importer fails, and the log names the file and line:
+| Argument | Effect |
+| --- | --- |
+| `-dataImporters ItemConfigsImporter,EnemyConfigsImporter` | Run only these importers, by type name; an unknown name fails the run and lists the available importers |
+| `-dataImportPull` | Pull each upstream source into its CSV file before importing |
+| `-dataImportSpreadsheetId <id>` | Pull every Google Sheet source from another spreadsheet, such as a duplicate |
+| `-dataImportReport <path>` | Write a JSON report; an earlier report at that path is deleted first |
 
-```text
-Assets/Data/Items.csv:3: Column 'Power': cannot read 'strong' as Single (Input string was not in a correct format.)
+The run exits non-zero when any importer fails. The report lists every importer, and each error names the file and line:
+
+```json
+{
+    "Failed": 1,
+    "Results": [
+        { "Importer": "ItemConfigsImporter", "CsvPath": "Assets/Data/Items.csv", "Source": "", "Pulled": false, "Rows": 0,
+          "Error": "Assets/Data/Items.csv:3: Column 'Power': cannot read 'strong' as Single (Input string was not in a correct format.)" }
+    ]
+}
 ```
 
-Use `DataImporterEditorUtils.PullAndImportAll` to refresh from the upstream sources first.
+`DataImporterEditorUtils.ImportAll` and `PullAndImportAll` run every importer the same way, without arguments.
+
+**Edit the right file.** A Pull overwrites the CSV file of an importer that has a `Source`. For those importers, change the spreadsheet; edit the CSV file directly only for importers without a source. In the window, the source badge on each row shows which kind it is.
 
 ## Editor tools and sample
 
-`Tools/GameLovers/Data Importer/` holds **Import All**, **Pull And Import All**, and **Open Window**. The window lists every importer with its own Pull, Import, and Select Asset buttons.
+`Tools/GameLovers/Data Importer/` holds **Import All**, **Pull And Import All**, and **Open Window**. The window lists every importer with a CSV, Excel, or Google Sheet badge and four buttons: **Open Source**, **Pull And Import**, **Import**, and **Select Asset**. After a run, each row shows its result: the number of imported rows, or the error with its file and line. A pull shows a progress bar and can be cancelled.
 
 The **Data Import** sample has one importer per source, with the CSV files, an Excel workbook, the imported assets, and a JSON payload to compare against. Import it from Package Manager and read its README.
 

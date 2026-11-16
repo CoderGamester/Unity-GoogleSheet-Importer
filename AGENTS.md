@@ -21,7 +21,10 @@ This guide adds package-specific rules to the host repository guide. Consumer us
 - The CSV file is the single input of an import. `Import` never reads the upstream; only `Pull` does, and `Pull` only rewrites the CSV file. Keep the two steps separate so an import is reproducible offline and in CI.
 - Pulled CSV files are written with LF line endings and a final newline, so a pull that changes no data produces no diff.
 - The ScriptableObject asset is the default output and is always written. The JSON payload is opt-in per importer through `WriteJsonPayload` and is `JsonUtility.ToJson` of the same asset, so both outputs always hold the same content. Do not add a second serializer or a runtime reader type for it.
-- `ImportAll` runs importers sequentially in `ImportOrderAttribute` order, then type name, logs one `path:line: message` error per failing importer, saves once, and throws when any importer failed. That exception is what makes a batchmode `-executeMethod` run exit non-zero; do not swallow it.
+- `Run` executes importers sequentially, records one `ImportResult` per importer, logs each failure as `path:line: message`, and never throws or saves. `ImportAll` and `RunFromCommandLine` run it over `ImportOrderAttribute` order, then type name, save once, and throw when any importer failed. That exception is what makes a batchmode `-executeMethod` run exit non-zero; do not swallow it.
+- The public field names of `ImportReport` and `ImportResult` are the JSON report format agents parse. Renaming one or turning it into a property is a breaking change.
+- `RunFromCommandLine` deletes an existing report before running, so a report on disk always belongs to the last run. An unknown `-dataImporters` name fails before any importer runs.
+- Progress bars are skipped in batchmode. Cancelling a download aborts the request and fails only that importer.
 - A CSV file without data rows is an import error, so an emptied sheet or worksheet cannot silently empty an asset.
 - Report a row failure by throwing `DataImportException` with the zero-based data row. Only `DataImporterEditorUtils.Import` turns the row into a file line, using the line map `CsvParser.ConvertCsv` fills.
 - Google Sheet URLs are rewritten to public CSV export URLs from the spreadsheet id and `gid` wherever they appear in the URL, including the account-scoped `/u/<n>/` form. A published-to-web URL is rejected. The package has no authentication flow, so the sheet must be link-shared; an HTML response is an error, not data.
@@ -50,6 +53,6 @@ This guide adds package-specific rules to the host repository guide. Consumer us
 ## Tests and verification
 
 - Before changing anything under `Tests/`, read `Tests/AGENTS.md`.
-- The automated suite covers the parser, the Excel reader, and URL rewriting. Asset writes, the window, and downloads are not covered: changes there require a real `Import All` and `Pull And Import All` on the imported sample and inspection of the resulting assets.
+- The automated suite covers the parser, the Excel reader, URL rewriting, `Run` results, and command-line arguments. Asset writes, the window, and downloads are not covered: changes there require a real `Import All` and `Pull And Import All` on the imported sample and inspection of the resulting assets.
 - Changes to the window require a visual check in the Editor.
 - Update `README.md`, `MIGRATION.md`, and the sample when importer setup or public parsing behavior changes; update this guide only for durable package invariants.

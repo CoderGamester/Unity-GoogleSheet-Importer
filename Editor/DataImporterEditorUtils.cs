@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -18,6 +19,11 @@ namespace GameLovers.DataImporter.Editor
 		private const string MenuRoot = "Tools/GameLovers/Data Importer/";
 		private const string PublishedUrlMarker = "e";
 		private const int DownloadTimeoutSeconds = 30;
+		private const string ProgressTitle = "Data Importer";
+		private const string ImportersArg = "-dataImporters";
+		private const string PullArg = "-dataImportPull";
+		private const string SpreadsheetIdArg = "-dataImportSpreadsheetId";
+		private const string ReportArg = "-dataImportReport";
 
 		/// <summary>
 		/// Imports every CSV file into its target and throws when any importer fails, so a batchmode
@@ -42,35 +48,92 @@ namespace GameLovers.DataImporter.Editor
 		/// </summary>
 		public static void ImportAll(bool pull, string spreadsheetIdOverride)
 		{
-			var importers = DiscoverImporters();
-			var failures = 0;
+			ThrowIfFailed(RunAndSave(DiscoverImporters(), pull, spreadsheetIdOverride));
+		}
 
-			foreach (var importer in importers)
+		/// <summary>
+		/// Headless entry point for <c>-executeMethod</c>. Reads <c>-dataImporters A,B</c> (importer type names;
+		/// all importers when absent), <c>-dataImportPull</c>, <c>-dataImportSpreadsheetId &lt;id&gt;</c> and
+		/// <c>-dataImportReport &lt;path&gt;</c> from the command line, writes the JSON report when asked, and throws
+		/// when any importer fails so the process exits non-zero.
+		/// </summary>
+		public static void RunFromCommandLine()
+		{
+			var args = Environment.GetCommandLineArgs();
+			var reportPath = ArgValue(args, ReportArg);
+
+			if (reportPath != null && File.Exists(reportPath))
 			{
-				try
+				File.Delete(reportPath);
+			}
+
+			var importers = SelectImporters(DiscoverImporters(), ArgValue(args, ImportersArg));
+			var report = RunAndSave(importers, Array.IndexOf(args, PullArg) >= 0, ArgValue(args, SpreadsheetIdArg));
+
+			if (reportPath != null)
+			{
+				var directory = Path.GetDirectoryName(reportPath);
+
+				if (!string.IsNullOrEmpty(directory))
 				{
-					if (pull && !string.IsNullOrWhiteSpace(importer.Source))
+					Directory.CreateDirectory(directory);
+				}
+
+				File.WriteAllText(reportPath, JsonUtility.ToJson(report, true));
+			}
+
+			ThrowIfFailed(report);
+		}
+
+		/// <summary>
+		/// Runs the given importers in order, optionally pulling each upstream first, and returns one result per
+		/// importer. Logs each failure as <c>path:line: message</c> and never throws; it does not save assets.
+		/// </summary>
+		public static ImportReport Run(IReadOnlyList<IDataImporter> importers, bool pull, string spreadsheetIdOverride)
+		{
+			var report = new ImportReport();
+
+			try
+			{
+				for (var i = 0; i < importers.Count; i++)
+				{
+					var importer = importers[i];
+					var result = new ImportResult
 					{
-						Pull(importer, spreadsheetIdOverride);
+						Importer = importer.GetType().Name,
+						CsvPath = importer.CsvPath,
+						Source = importer.Source
+					};
+
+					ShowProgress($"Importing {result.Importer}", (float)i / importers.Count);
+
+					try
+					{
+						if (pull && !string.IsNullOrWhiteSpace(importer.Source))
+						{
+							Pull(importer, spreadsheetIdOverride);
+							result.Pulled = true;
+						}
+
+						result.Rows = Import(importer);
+						Debug.Log($"Imported {result.Rows} rows from {importer.CsvPath} with {result.Importer}");
+					}
+					catch (Exception e)
+					{
+						result.Error = e.Message;
+						report.Failed++;
+						Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", e.Message);
 					}
 
-					Import(importer);
-					Debug.Log($"Imported {importer.CsvPath} with {importer.GetType().Name}");
-				}
-				catch (Exception e)
-				{
-					failures++;
-					Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", e.Message);
+					report.Results.Add(result);
 				}
 			}
-
-			AssetDatabase.SaveAssets();
-			AssetDatabase.Refresh();
-
-			if (failures > 0)
+			finally
 			{
-				throw new InvalidOperationException($"Data import failed: {failures} of {importers.Count} importers reported errors");
+				ClearProgress();
 			}
+
+			return report;
 		}
 
 		/// <summary>
@@ -121,10 +184,11 @@ namespace GameLovers.DataImporter.Editor
 		}
 
 		/// <summary>
-		/// Reads the importer's CSV file and runs the importer on it, throwing a <see cref="DataImportException"/>
-		/// whose message starts with <c>path:line</c> when the file or a row cannot be imported.
+		/// Reads the importer's CSV file, runs the importer on it and returns the number of data rows, throwing a
+		/// <see cref="DataImportException"/> whose message starts with <c>path:line</c> when the file or a row
+		/// cannot be imported.
 		/// </summary>
-		public static void Import(IDataImporter importer)
+		public static int Import(IDataImporter importer)
 		{
 			var path = importer.CsvPath;
 			var lines = new List<int>();
@@ -140,6 +204,8 @@ namespace GameLovers.DataImporter.Editor
 				}
 
 				importer.Import(rows);
+
+				return rows.Count;
 			}
 			catch (DataImportException e)
 			{
@@ -196,9 +262,95 @@ namespace GameLovers.DataImporter.Editor
 			return null;
 		}
 
+		/// <summary>
+		/// Picks the importers named in a comma-separated list of type names, keeping import order. Returns all of
+		/// them when <paramref name="names"/> is null and throws when a name matches no importer.
+		/// </summary>
+		internal static List<IDataImporter> SelectImporters(IReadOnlyList<IDataImporter> importers, string names)
+		{
+			if (names == null)
+			{
+				return new List<IDataImporter>(importers);
+			}
+
+			var requested = new HashSet<string>(StringComparer.Ordinal);
+
+			foreach (var name in names.Split(','))
+			{
+				if (name.Trim().Length > 0)
+				{
+					requested.Add(name.Trim());
+				}
+			}
+
+			var selected = importers.Where(importer => requested.Remove(importer.GetType().Name)).ToList();
+
+			if (requested.Count > 0)
+			{
+				var available = string.Join(", ", importers.Select(importer => importer.GetType().Name));
+
+				throw new ArgumentException($"No importer named {string.Join(", ", requested)}; available: {available}");
+			}
+
+			return selected;
+		}
+
+		/// <summary>Returns the argument after <paramref name="name"/>, or null when the flag is absent.</summary>
+		internal static string ArgValue(string[] args, string name)
+		{
+			var index = Array.IndexOf(args, name);
+
+			if (index < 0)
+			{
+				return null;
+			}
+
+			if (index + 1 >= args.Length)
+			{
+				throw new ArgumentException($"{name} needs a value");
+			}
+
+			return args[index + 1];
+		}
+
+		private static ImportReport RunAndSave(IReadOnlyList<IDataImporter> importers, bool pull, string spreadsheetIdOverride)
+		{
+			var report = Run(importers, pull, spreadsheetIdOverride);
+
+			AssetDatabase.SaveAssets();
+			AssetDatabase.Refresh();
+
+			return report;
+		}
+
+		private static void ThrowIfFailed(ImportReport report)
+		{
+			if (report.Failed > 0)
+			{
+				throw new InvalidOperationException(
+					$"Data import failed: {report.Failed} of {report.Results.Count} importers reported errors");
+			}
+		}
+
 		private static int ImportOrder(IDataImporter importer)
 		{
 			return importer.GetType().GetCustomAttribute<ImportOrderAttribute>()?.ImportOrder ?? int.MaxValue;
+		}
+
+		private static void ShowProgress(string info, float progress)
+		{
+			if (!Application.isBatchMode)
+			{
+				EditorUtility.DisplayProgressBar(ProgressTitle, info, progress);
+			}
+		}
+
+		private static void ClearProgress()
+		{
+			if (!Application.isBatchMode)
+			{
+				EditorUtility.ClearProgressBar();
+			}
 		}
 
 		private static string DownloadCsv(string url)
@@ -209,9 +361,24 @@ namespace GameLovers.DataImporter.Editor
 
 			var operation = request.SendWebRequest();
 
-			while (!operation.isDone)
+			try
 			{
-				Thread.Sleep(10);
+				while (!operation.isDone)
+				{
+					if (!Application.isBatchMode &&
+						EditorUtility.DisplayCancelableProgressBar(ProgressTitle, $"Downloading {url}", request.downloadProgress))
+					{
+						request.Abort();
+
+						throw new OperationCanceledException($"Download cancelled for {url}");
+					}
+
+					Thread.Sleep(10);
+				}
+			}
+			finally
+			{
+				ClearProgress();
 			}
 
 			if (request.result != UnityWebRequest.Result.Success)

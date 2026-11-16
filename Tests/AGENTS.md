@@ -64,10 +64,10 @@ Benchmarks use the inverted check: removing the workload from the measured body 
 
 ## Current suite
 
-- The package has one Editor-only test assembly with three fixtures: `CsvParserTest` (CSV reading and writing, cell parsing, column validation), `XlsxReaderTest` (Excel worksheets), and `DataImporterEditorUtilsTest` (Google Sheet URL rewriting).
-- The test assembly references the package Editor assembly, where the parser and readers live, plus the runtime and GameData assemblies. Do not claim coverage of downloads, importer discovery, the window, or `AssetDatabase` writes from this suite.
+- The package has one Editor-only test assembly with three fixtures: `CsvParserTest` (CSV reading and writing, cell parsing, column validation), `XlsxReaderTest` (Excel worksheets), and `DataImporterEditorUtilsTest` (Google Sheet URL rewriting, `Run` results, the report format, and command-line arguments).
+- The test assembly references the package Editor assembly, where the parser and readers live, plus the runtime and GameData assemblies. `InternalsVisibleTo` exposes the command-line helpers to it. Do not claim coverage of downloads, importer discovery, the window, or `AssetDatabase` writes from this suite.
 - `XlsxReaderTest` writes each workbook it needs into the temp folder from inline XML and deletes it in teardown. Do not add binary workbook fixtures.
-- NSubstitute is referenced by the asmdef but is unused. Do not introduce a mock when direct input is cheaper.
+- Test importers are NSubstitute substitutes of `IDataImporter`. Never declare a concrete `IDataImporter` class in the test assembly: importer discovery would find it, and it would appear in the window and in `ImportAll`.
 
 ## Adding coverage
 
