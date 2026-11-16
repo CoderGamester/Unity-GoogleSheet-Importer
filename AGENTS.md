@@ -28,8 +28,10 @@ This guide adds package-specific rules to the host repository guide. Consumer us
 - A CSV file without data rows is an import error, so an emptied sheet or worksheet cannot silently empty an asset.
 - Report a row failure by throwing `DataImportException` with the zero-based data row. Only `DataImporterEditorUtils.Import` turns the row into a file line, using the line map `CsvParser.ConvertCsv` fills.
 - Google Sheet URLs are rewritten to public CSV export URLs from the spreadsheet id and `gid` wherever they appear in the URL, including the account-scoped `/u/<n>/` form. A published-to-web URL is rejected. An HTML response is an error, not data.
-- A private sheet is pulled with a service-account key: `GoogleServiceAccount` signs an RS256 assertion for the `drive.readonly` scope, `DataImporterEditorUtils` trades it for an access token once per pull and sends it to the same CSV export URL. Without a key, downloads stay anonymous. The key path comes from `-dataImportServiceAccountKey`, then the window's EditorPrefs setting, then `GOOGLE_APPLICATION_CREDENTIALS`.
-- Never log, report, or store the key's content, the assertion, or the token. Only the key's path is stored, in EditorPrefs. A key inside the project folder gets a warning, not a refusal, because CI may write the key into its workspace.
+- A pull of a Google Sheet picks one credential, in this order: the `-dataImportServiceAccountKey` key, the signed-in user (`GoogleSignIn`), the `GOOGLE_APPLICATION_CREDENTIALS` key, then an anonymous download of the CSV export URL. `ServiceAccountKeyFor` owns that order.
+- With a credential, the pull reads the tab through the Sheets API (`spreadsheets.readonly` only; never a Drive scope) and writes the values as CSV, padded to the widest row. Do not send a token to the CSV export URL: Google does not document it for that endpoint.
+- `GoogleSignIn` is an installed-app OAuth flow: loopback redirect on `127.0.0.1`, PKCE S256, and a state check. Google still requires the Desktop client's secret. The client comes from `DataImporterSettings` in `ProjectSettings/`, shared by the team. The refresh token and account live per user and project in EditorPrefs. An `invalid_grant` on refresh signs the user out and asks for a new sign-in.
+- Never log, report, or store a key's content, an assertion, an authorization code, or a token outside those places. A service-account key inside the project folder gets a warning, not a refusal, because CI may write the key into its workspace.
 - The Editor's Mono runtime cannot import PKCS#8 keys (`RSA.ImportPkcs8PrivateKey` throws `PlatformNotSupportedException`), so `GoogleServiceAccount.ReadPrivateKey` reads the DER itself. Keep it dependency-free.
 - The spreadsheet-id override is a per-pull argument and must not mutate importer definitions.
 
@@ -56,6 +58,6 @@ This guide adds package-specific rules to the host repository guide. Consumer us
 ## Tests and verification
 
 - Before changing anything under `Tests/`, read `Tests/AGENTS.md`.
-- The automated suite covers the parser, the Excel reader, URL rewriting, `Run` results, and command-line arguments. Asset writes, the window, and downloads are not covered: changes there require a real `Import All` and `Pull And Import All` on the imported sample and inspection of the resulting assets.
+- The automated suite covers the parser, the Excel reader, URL rewriting, `Run` results, command-line arguments, credential order, and the sign-in and key helpers. The live Google sign-in and Google's endpoints are not covered: a change there needs a real sign-in and a pull of a private sheet. Asset writes, the window, and downloads are not covered: changes there require a real `Import All` and `Pull And Import All` on the imported sample and inspection of the resulting assets.
 - Changes to the window require a visual check in the Editor.
 - Update `README.md`, `MIGRATION.md`, and the sample when importer setup or public parsing behavior changes; update this guide only for durable package invariants.

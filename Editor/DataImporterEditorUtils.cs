@@ -28,29 +28,10 @@ namespace GameLovers.DataImporter.Editor
 		private const string ReportArg = "-dataImportReport";
 		private const string ServiceAccountKeyArg = "-dataImportServiceAccountKey";
 		private const string ServiceAccountKeyVariable = "GOOGLE_APPLICATION_CREDENTIALS";
-		private const string ServiceAccountKeyPrefsPrefix = "GameLovers.DataImporter.ServiceAccountKey:";
+		private const string SheetsApi = "https://sheets.googleapis.com/v4/spreadsheets";
 
-		/// <summary>The key path set in the window, kept per user and project in EditorPrefs.</summary>
-		internal static string ServiceAccountKeySetting
-		{
-			get => EditorPrefs.GetString(ServiceAccountKeyPrefsKey, string.Empty);
-			set
-			{
-				if (string.IsNullOrWhiteSpace(value))
-				{
-					EditorPrefs.DeleteKey(ServiceAccountKeyPrefsKey);
-				}
-				else
-				{
-					EditorPrefs.SetString(ServiceAccountKeyPrefsKey, value.Trim());
-				}
-			}
-		}
-
-		/// <summary>The value of the <c>GOOGLE_APPLICATION_CREDENTIALS</c> environment variable, or null.</summary>
-		internal static string ServiceAccountKeyEnvironment => Environment.GetEnvironmentVariable(ServiceAccountKeyVariable);
-
-		private static string ServiceAccountKeyPrefsKey => ServiceAccountKeyPrefsPrefix + Application.dataPath;
+		/// <summary>Key of the Google error code in the Data of a <see cref="PostToken"/> exception.</summary>
+		internal const string GoogleErrorKey = "GoogleError";
 
 		/// <summary>
 		/// Imports every CSV file into its target and throws when any importer fails, so a batchmode
@@ -202,7 +183,7 @@ namespace GameLovers.DataImporter.Editor
 			}
 
 			var csv = source.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-						  ? DownloadCsv(GoogleSheetCsvUrl(source, spreadsheetIdOverride), ServiceAccountKeyPath())
+						  ? DownloadGoogleSheet(source, spreadsheetIdOverride)
 						  : ReadWorkbookAsCsv(source);
 
 			Directory.CreateDirectory(Path.GetDirectoryName(importer.CsvPath));
@@ -340,32 +321,70 @@ namespace GameLovers.DataImporter.Editor
 			return args[index + 1];
 		}
 
-		/// <summary>The key file Google Sheet pulls sign in with, or null to download anonymously.</summary>
-		internal static string ServiceAccountKeyPath()
+		/// <summary>
+		/// The service-account key a pull signs in with: the command-line key, else none when the user is signed in,
+		/// else <c>GOOGLE_APPLICATION_CREDENTIALS</c>. Null means the signed-in user or an anonymous download.
+		/// </summary>
+		internal static string ServiceAccountKeyFor(string argument, bool userSignedIn, string environment)
 		{
-			return ResolveServiceAccountKey(Environment.GetCommandLineArgs(), ServiceAccountKeySetting, ServiceAccountKeyEnvironment);
-		}
-
-		/// <summary>Picks the key path from the command line, the window setting, then the environment.</summary>
-		internal static string ResolveServiceAccountKey(string[] args, string setting, string environment)
-		{
-			var argument = ArgValue(args, ServiceAccountKeyArg);
-
 			if (!string.IsNullOrWhiteSpace(argument))
 			{
 				return argument.Trim();
 			}
 
-			if (!string.IsNullOrWhiteSpace(setting))
+			if (userSignedIn)
 			{
-				return setting.Trim();
+				return null;
 			}
 
 			return string.IsNullOrWhiteSpace(environment) ? null : environment.Trim();
 		}
 
-		/// <summary>True when <paramref name="path"/> is inside the project, where it could be committed.</summary>
-		internal static bool IsInsideProject(string path)
+		/// <summary>The A1 range that selects a whole tab, with the title always quoted and quotes doubled.</summary>
+		internal static string SheetRange(string title)
+		{
+			return $"'{title.Replace("'", "''")}'";
+		}
+
+		/// <summary>Sheets API cell rows as CSV rows, padded to the widest row because the API drops trailing blanks.</summary>
+		internal static List<string[]> SheetRows(JArray values)
+		{
+			var rows = values?.Select(row => row.Select(cell => cell.ToString()).ToArray()).ToList() ?? new List<string[]>();
+			var width = rows.Count == 0 ? 0 : rows.Max(row => row.Length);
+
+			return rows.Select(row => row.Concat(Enumerable.Repeat(string.Empty, width - row.Length)).ToArray()).ToList();
+		}
+
+		/// <summary>Sends a form to Google's token endpoint and returns the JSON reply, or throws with Google's error.</summary>
+		internal static JObject PostToken(IDictionary<string, string> fields, string info, string tokenUri = GoogleServiceAccount.DefaultTokenUri)
+		{
+			var form = new WWWForm();
+
+			foreach (var field in fields)
+			{
+				form.AddField(field.Key, field.Value);
+			}
+
+			using var request = UnityWebRequest.Post(tokenUri, form);
+
+			Send(request, info);
+
+			var body = request.downloadHandler?.text ?? string.Empty;
+
+			if (request.result != UnityWebRequest.Result.Success)
+			{
+				var error = GoogleError(body);
+				var exception = new IOException($"Google refused the sign-in ({request.responseCode}): {error.Message ?? request.error}");
+
+				exception.Data[GoogleErrorKey] = error.Code;
+
+				throw exception;
+			}
+
+			return JObject.Parse(body);
+		}
+
+		private static bool IsInsideProject(string path)
 		{
 			var project = Path.GetFullPath(Directory.GetCurrentDirectory()).TrimEnd(Path.DirectorySeparatorChar) +
 						  Path.DirectorySeparatorChar;
@@ -388,47 +407,100 @@ namespace GameLovers.DataImporter.Editor
 			return File.ReadAllText(path);
 		}
 
-		private static string RequestAccessToken(string keyJson)
+		private static string ServiceAccountToken(string keyJson)
 		{
-			var tokenUri = GoogleServiceAccount.TokenUri(keyJson);
-			var form = new WWWForm();
-
-			form.AddField("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer");
-			form.AddField("assertion", GoogleServiceAccount.CreateAssertion(keyJson, DateTime.UtcNow));
-
-			using var request = UnityWebRequest.Post(tokenUri, form);
-
-			Send(request, "Signing in with the service-account key");
-
-			var body = request.downloadHandler?.text ?? string.Empty;
-
-			if (request.result != UnityWebRequest.Result.Success)
+			var reply = PostToken(new Dictionary<string, string>
 			{
-				throw new IOException($"Google refused the service-account sign-in ({request.responseCode}): {TokenError(body, request.error)}");
-			}
+				["grant_type"] = "urn:ietf:params:oauth:grant-type:jwt-bearer",
+				["assertion"] = GoogleServiceAccount.CreateAssertion(keyJson, DateTime.UtcNow)
+			}, "Signing in with the service-account key", GoogleServiceAccount.TokenUri(keyJson));
 
-			var token = JObject.Parse(body).Value<string>("access_token");
-
-			if (string.IsNullOrEmpty(token))
-			{
-				throw new IOException("Google's sign-in response has no access token");
-			}
-
-			return token;
+			return reply.Value<string>("access_token") ?? throw new IOException("Google's sign-in reply has no access token");
 		}
 
-		private static string TokenError(string body, string fallback)
+		private static (string Code, string Message) GoogleError(string body)
 		{
 			try
 			{
-				var error = JObject.Parse(body);
+				var reply = JObject.Parse(body);
 
-				return $"{error.Value<string>("error")}: {error.Value<string>("error_description")}";
+				if (reply["error"] is JObject apiError)
+				{
+					return (apiError.Value<string>("status"), apiError.Value<string>("message"));
+				}
+
+				var code = reply.Value<string>("error");
+
+				return (code, $"{code}: {reply.Value<string>("error_description")}");
 			}
 			catch (JsonException)
 			{
-				return fallback;
+				return (null, null);
 			}
+		}
+
+		private static string DownloadGoogleSheet(string sheetUrl, string spreadsheetIdOverride)
+		{
+			var csvUrl = GoogleSheetCsvUrl(sheetUrl, spreadsheetIdOverride);
+			var keyPath = ServiceAccountKeyFor(ArgValue(Environment.GetCommandLineArgs(), ServiceAccountKeyArg), GoogleSignIn.SignedIn,
+				Environment.GetEnvironmentVariable(ServiceAccountKeyVariable));
+
+			if (keyPath != null)
+			{
+				var keyJson = ReadServiceAccountKey(keyPath);
+				var account = GoogleServiceAccount.ClientEmail(keyJson);
+
+				return ReadSheet(csvUrl, ServiceAccountToken(keyJson),
+					$"the service account {account} cannot read this sheet; share the sheet with that address");
+			}
+
+			if (GoogleSignIn.SignedIn)
+			{
+				return ReadSheet(csvUrl, GoogleSignIn.AccessToken(),
+					$"your Google account {GoogleSignIn.Account} cannot open this sheet; ask its owner to share it with you");
+			}
+
+			return DownloadCsv(csvUrl);
+		}
+
+		private static string ReadSheet(string csvUrl, string token, string noAccess)
+		{
+			var ids = Regex.Match(csvUrl, @"/d/([^/]+)/export\?format=csv&gid=(\d+)");
+			var spreadsheet = $"{SheetsApi}/{ids.Groups[1].Value}";
+			var tabs = GetSheetsJson($"{spreadsheet}?fields=sheets.properties(sheetId%2Ctitle)", token, noAccess)["sheets"] as JArray;
+			var properties = tabs?.Select(tab => tab["properties"]).ToList() ?? new List<JToken>();
+			var gid = ids.Groups[2].Value;
+			var tab = properties.FirstOrDefault(p => p.Value<string>("sheetId") == gid) ?? (gid == "0" ? properties.FirstOrDefault() : null);
+
+			if (tab == null)
+			{
+				throw new IOException($"The spreadsheet has no tab with gid={gid}; it has: " +
+									  string.Join(", ", properties.Select(p => $"{p.Value<string>("title")} (gid={p.Value<string>("sheetId")})")));
+			}
+
+			var range = Uri.EscapeDataString(SheetRange(tab.Value<string>("title")));
+			var values = GetSheetsJson($"{spreadsheet}/values/{range}?valueRenderOption=FORMATTED_VALUE", token, noAccess);
+
+			return CsvParser.ToCsv(SheetRows(values["values"] as JArray));
+		}
+
+		private static JObject GetSheetsJson(string url, string token, string noAccess)
+		{
+			using var request = UnityWebRequest.Get(url);
+
+			request.SetRequestHeader("Authorization", $"Bearer {token}");
+			Send(request, "Reading the Google Sheet");
+
+			if (request.result == UnityWebRequest.Result.Success)
+			{
+				return JObject.Parse(request.downloadHandler.text);
+			}
+
+			var detail = GoogleError(request.downloadHandler?.text ?? string.Empty).Message ?? request.error;
+
+			throw new IOException(request.responseCode is 403 or 404
+									  ? $"Google Sheets ({request.responseCode}): {noAccess} ({detail})"
+									  : $"Google Sheets ({request.responseCode}): {detail}");
 		}
 
 		private static ImportReport RunAndSave(IReadOnlyList<IDataImporter> importers, bool pull, string spreadsheetIdOverride)
@@ -498,25 +570,11 @@ namespace GameLovers.DataImporter.Editor
 			}
 		}
 
-		private static string DownloadCsv(string url, string keyPath)
+		private static string DownloadCsv(string url)
 		{
-			var keyJson = keyPath == null ? null : ReadServiceAccountKey(keyPath);
-			var account = keyJson == null ? null : GoogleServiceAccount.ClientEmail(keyJson);
-
 			using var request = UnityWebRequest.Get(url);
 
-			if (keyJson != null)
-			{
-				request.SetRequestHeader("Authorization", $"Bearer {RequestAccessToken(keyJson)}");
-			}
-
 			Send(request, $"Downloading {url}");
-
-			if (account != null && request.responseCode is 401 or 403 or 404)
-			{
-				throw new IOException($"{url}: the service account {account} cannot read this sheet ({request.responseCode}); " +
-									  "share the sheet with that address");
-			}
 
 			if (request.result != UnityWebRequest.Result.Success)
 			{
@@ -528,10 +586,8 @@ namespace GameLovers.DataImporter.Editor
 
 			if (contentType.Contains("text/html") || text.TrimStart().StartsWith("<"))
 			{
-				throw new IOException(account == null
-										  ? $"{url} returned a web page instead of CSV: share the sheet as 'Anyone with the link', " +
-											"or set a service-account key for a private sheet"
-										  : $"{url} returned a web page instead of CSV: share the sheet with {account}");
+				throw new IOException($"{url} returned a web page instead of CSV: the sheet is private. Sign in with Google in " +
+									  "the Data Importer window, or share the sheet as 'Anyone with the link'");
 			}
 
 			text = text.Replace("\r\n", "\n");

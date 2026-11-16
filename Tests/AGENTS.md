@@ -64,7 +64,13 @@ Benchmarks use the inverted check: removing the workload from the measured body 
 
 ## Current suite
 
-- The package has one Editor-only test assembly with four fixtures: `CsvParserTest` (CSV reading and writing, cell parsing, column validation), `XlsxReaderTest` (Excel worksheets), `DataImporterEditorUtilsTest` (Google Sheet URL rewriting, `Run` results, the report format, command-line arguments, and key-path resolution), and `GoogleServiceAccountTest` (service-account key reading and the signed assertion).
+- The package has one Editor-only test assembly with five fixtures:
+  - `CsvParserTest`: CSV reading and writing, cell parsing, column validation.
+  - `XlsxReaderTest`: Excel worksheets.
+  - `DataImporterEditorUtilsTest`: Google Sheet URL rewriting, `Run` results, the report format, command-line arguments, credential order, and Sheets API rows.
+  - `GoogleServiceAccountTest`: service-account key reading and the signed assertion.
+  - `GoogleSignInTest`: PKCE, the consent URL, client files, the redirect reply, and the id token.
+- The live sign-in and Google's endpoints are not covered.
 - `GoogleServiceAccountTest` generates its RSA key in memory and encodes it as PKCS#8 itself. Never commit a private key or a service-account JSON file, even a throwaway one: the repository is public and secret scanners flag them.
 - The test assembly references the package Editor assembly, where the parser and readers live, plus the runtime and GameData assemblies and Newtonsoft.Json. `InternalsVisibleTo` exposes the command-line helpers to it. Do not claim coverage of downloads, importer discovery, the window, or `AssetDatabase` writes from this suite.
 - `XlsxReaderTest` writes each workbook it needs into the temp folder from inline XML and deletes it in teardown. Do not add binary workbook fixtures.

@@ -60,7 +60,7 @@ namespace GameLovers.DataImporter.Editor.Tests
 			Assert.AreEqual("RS256", header.Value<string>("alg"));
 			Assert.AreEqual(Email, claims.Value<string>("iss"));
 			Assert.AreEqual(TokenUri, claims.Value<string>("aud"));
-			Assert.AreEqual("https://www.googleapis.com/auth/drive.readonly", claims.Value<string>("scope"));
+			Assert.AreEqual("https://www.googleapis.com/auth/spreadsheets.readonly", claims.Value<string>("scope"));
 			Assert.AreEqual(issuedAt, claims.Value<long>("iat"));
 			Assert.AreEqual(issuedAt + 3600, claims.Value<long>("exp"));
 		}

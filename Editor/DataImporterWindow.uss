@@ -14,18 +14,45 @@
     opacity: 0.7;
 }
 
-.importer-key {
+.importer-google {
+    margin: 4px 0;
+    padding: 4px;
+    border-width: 1px;
+    border-radius: 3px;
+    border-color: rgba(128, 128, 128, 0.3);
+}
+
+.importer-google__header {
     flex-direction: row;
     align-items: center;
 }
 
-.importer-key__field {
+.importer-google__status {
     flex-grow: 1;
     flex-shrink: 1;
+    margin-left: 6px;
+    opacity: 0.8;
+    white-space: normal;
 }
 
-.importer-key__status {
-    margin: 0 4px 4px 4px;
+.importer-google__guide {
+    margin-top: 4px;
+}
+
+.importer-google__step {
+    flex-direction: row;
+    align-items: center;
+    margin-top: 2px;
+}
+
+.importer-google__step-text {
+    flex-grow: 1;
+    flex-shrink: 1;
+    white-space: normal;
+}
+
+.importer-google__note {
+    margin: 4px 0;
     opacity: 0.7;
     white-space: normal;
 }

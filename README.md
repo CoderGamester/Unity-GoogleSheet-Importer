@@ -9,7 +9,7 @@ Editor tooling that imports CSV files, Excel worksheets, and Google Sheets into 
 
 Use this package when game data is authored as tables, by designers in a spreadsheet or by people and agents in a CSV file, and the game consumes typed configuration. Every source becomes a CSV file in the project, and an Editor-only importer bakes that file into a ScriptableObject asset. A player never parses sheet data: it loads the asset. The package is pipeline-neutral.
 
-It is not a runtime CSV or spreadsheet reader, and it has no authentication flow for private Google Sheets.
+It is not a runtime CSV or spreadsheet reader.
 
 ## Unity compatibility
 
@@ -86,13 +86,26 @@ The CSV file is the one input of an import. A spreadsheet is an optional upstrea
 | Google Sheet tab | `Source =>` the tab's URL as copied from the browser | Pull |
 
 - **Excel:** values only, read without a third-party library. Formulas import as their last calculated value, dates as `yyyy-MM-dd`, booleans as `TRUE`/`FALSE`. Without `#SheetName` the first worksheet is read.
-- **Google Sheets:** use the URL of the sheet's edit page, not a published-to-web link. Without a key, the sheet must be shared as "Anyone with the link", which makes it public data.
-- **Private Google Sheets:** create a service account in Google Cloud, download its JSON key, and share the sheet with the account's `client_email` as a Viewer. Point the importer at the key with one of these, first match wins:
-  1. `-dataImportServiceAccountKey <path>` on the command line.
-  2. The **Service account key** field in the window. It is stored for you and this project in EditorPrefs, not in the project.
-  3. The `GOOGLE_APPLICATION_CREDENTIALS` environment variable, the usual choice for CI.
+- **Google Sheets:** use the URL of the sheet's edit page, not a published-to-web link. Without signing in, the sheet must be shared as "Anyone with the link", which makes it public data.
 
-  Keep the key file outside the project: anyone with it can read every sheet shared with the account. The package warns when the key is inside the project folder.
+### Private Google Sheets
+
+Sign in with Google in the Data Importer window. Pulls then read every sheet your account can open: no sharing step and no key file.
+
+1. **Once per project, by one person.** In the window, click **Set Up** next to *Google sign-in*. Follow the four **Open** links in the Google Cloud console, then click **Load Client File…** and pick the JSON file Google downloaded. Commit `ProjectSettings/GameLoversDataImporterSettings.asset`.
+2. **Everyone.** Click **Sign In With Google** and approve in the browser.
+3. Put the sheet's URL in the importer's `Source` and pull as usual.
+
+| Topic | What to know |
+| --- | --- |
+| Audience | Choose **Internal** when your team uses Google Workspace: no warning screen and no user limit. With personal Gmail accounts choose **External** and click **Publish app**. Google then shows "Google hasn't verified this app" (click *Advanced*, then *Continue*) and allows 100 users until the app is verified. An app left in *Testing* signs everyone out after 7 days. |
+| Access | The package only asks to read your spreadsheets. |
+| Where the sign-in is kept | Per user and project in EditorPrefs, never in the project. It is not encrypted, as with most developer tools. **Sign Out** removes it. |
+| The client file | Google treats a Desktop app client's secret as not confidential, so committing it to a private repository is fine. A public GitHub repository may block the push as a leaked secret: keep the file out of it and share it with your team another way. |
+
+**Builds without a person (CI):** use a Google service account instead. Enable the Google Sheets API in its Cloud project, download its JSON key, and share each sheet with the account's `client_email` as a Viewer. Pass the key with `-dataImportServiceAccountKey <path>` or the `GOOGLE_APPLICATION_CREDENTIALS` environment variable, and keep the file outside the project: the package warns when it is inside.
+
+A pull signs in with the first of these that is set: the command-line key, the signed-in user, `GOOGLE_APPLICATION_CREDENTIALS`. With none, it downloads anonymously.
 
 ## Outputs
 
@@ -137,7 +150,7 @@ Unity -batchmode -projectPath . -executeMethod GameLovers.DataImporter.Editor.Da
 | `-dataImporters ItemConfigsImporter,EnemyConfigsImporter` | Run only these importers, by type name; an unknown name fails the run and lists the available importers |
 | `-dataImportPull` | Pull each upstream source into its CSV file before importing |
 | `-dataImportSpreadsheetId <id>` | Pull every Google Sheet source from another spreadsheet, such as a duplicate |
-| `-dataImportServiceAccountKey <path>` | Sign in with a service-account key to pull private Google Sheets |
+| `-dataImportServiceAccountKey <path>` | Pull private Google Sheets with a service-account key. Without it, a run on a machine where someone signed in uses that sign-in |
 | `-dataImportReport <path>` | Write a JSON report; an earlier report at that path is deleted first |
 
 The run exits non-zero when any importer fails. The report lists every importer, and each error names the file and line:
@@ -158,7 +171,7 @@ The run exits non-zero when any importer fails. The report lists every importer,
 
 ## Editor tools and sample
 
-`Tools/GameLovers/Data Importer/` holds **Import All**, **Pull And Import All**, and **Open Window**. The window lists every importer with a CSV, Excel, or Google Sheet badge and four buttons: **Open Source**, **Pull And Import**, **Import**, and **Select Asset**. After a run, each row shows its result: the number of imported rows, or the error with its file and line. A pull shows a progress bar and can be cancelled.
+`Tools/GameLovers/Data Importer/` holds **Import All**, **Pull And Import All**, and **Open Window**. The window lists every importer with a CSV, Excel, or Google Sheet badge and four buttons: **Open Source**, **Pull And Import**, **Import**, and **Select Asset**. After a run, each row shows its result: the number of imported rows, or the error with its file and line. A pull shows a progress bar and can be cancelled. The **Google sign-in** section above the rows shows who is signed in and holds **Set Up**, **Sign In With Google**, and **Sign Out**.
 
 The **Data Import** sample has one importer per source, with the CSV files, an Excel workbook, the imported assets, and a JSON payload to compare against. Import it from Package Manager and read its README.
 

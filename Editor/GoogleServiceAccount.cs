@@ -10,8 +10,10 @@ namespace GameLovers.DataImporter.Editor
 	/// <summary>Reads a Google service-account key and builds the assertion it trades for a token.</summary>
 	internal static class GoogleServiceAccount
 	{
-		private const string ReadOnlyScope = "https://www.googleapis.com/auth/drive.readonly";
-		private const string DefaultTokenUri = "https://oauth2.googleapis.com/token";
+		/// <summary>Google's OAuth token endpoint.</summary>
+		internal const string DefaultTokenUri = "https://oauth2.googleapis.com/token";
+
+		private const string ReadOnlyScope = "https://www.googleapis.com/auth/spreadsheets.readonly";
 		private const string PemHeader = "-----BEGIN PRIVATE KEY-----";
 		private const string PemFooter = "-----END PRIVATE KEY-----";
 		private const int AssertionLifetimeSeconds = 3600;

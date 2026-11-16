@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Newtonsoft.Json.Linq;
 using NSubstitute;
 using NUnit.Framework;
 using UnityEngine;
@@ -123,20 +124,52 @@ namespace GameLovers.DataImporter.Editor.Tests
 			Assert.AreEqual("-abc_1", DataImporterEditorUtils.ArgValue(args, "-dataImportSpreadsheetId"));
 		}
 
-		[TestCase(new[] { "Unity", "-dataImportServiceAccountKey", "/keys/arg.json" }, "/keys/window.json", "/keys/env.json",
-			"/keys/arg.json")]
-		[TestCase(new[] { "Unity" }, "/keys/window.json", "/keys/env.json", "/keys/window.json")]
-		[TestCase(new[] { "Unity" }, " ", "/keys/env.json", "/keys/env.json")]
-		[TestCase(new[] { "Unity" }, "", "", null)]
-		// ADMIT: DataImporterEditorUtils.ResolveServiceAccountKey prefers the command line, then the window setting,
-		// then GOOGLE_APPLICATION_CREDENTIALS, and downloads anonymously without any.
-		// RCR: DataImporterEditorUtils.cs ResolveServiceAccountKey — change `if (!string.IsNullOrWhiteSpace(setting))`
-		// to `if (string.IsNullOrWhiteSpace(environment) && !string.IsNullOrWhiteSpace(setting))` → RED (the
-		// window.json case returns env.json). 2026-11-16
-		public void ResolveServiceAccountKey_Sources_PrefersCommandLineThenSettingThenEnvironment(string[] args,
-			string setting, string environment, string expected)
+		[TestCase("/keys/arg.json", true, "/keys/env.json", "/keys/arg.json")]
+		[TestCase(null, true, "/keys/env.json", null)]
+		[TestCase(" ", false, "/keys/env.json", "/keys/env.json")]
+		[TestCase(null, false, "", null)]
+		// ADMIT: DataImporterEditorUtils.ServiceAccountKeyFor lets a signed-in user win over GOOGLE_APPLICATION_CREDENTIALS
+		// but not over an explicit command-line key.
+		// RCR: DataImporterEditorUtils.cs ServiceAccountKeyFor — change `if (userSignedIn)` to `if (false)` → RED (the
+		// signed-in case returns env.json). 2026-11-16
+		public void ServiceAccountKeyFor_Sources_PrefersCommandLineThenSignedInUserThenEnvironment(string argument,
+			bool userSignedIn, string environment, string expected)
 		{
-			Assert.AreEqual(expected, DataImporterEditorUtils.ResolveServiceAccountKey(args, setting, environment));
+			Assert.AreEqual(expected, DataImporterEditorUtils.ServiceAccountKeyFor(argument, userSignedIn, environment));
+		}
+
+		[Test]
+		// ADMIT: DataImporterEditorUtils.SheetRange quotes a tab title and doubles its quotes, so a title such as A1 or
+		// one with an apostrophe still selects the whole tab.
+		// RCR: DataImporterEditorUtils.cs SheetRange — change `title.Replace("'", "''")` to `title` → RED (the
+		// apostrophe stays single). 2026-11-16
+		public void SheetRange_TitleWithApostrophe_QuotesAndDoublesIt()
+		{
+			Assert.AreEqual("'Bob''s tab'", DataImporterEditorUtils.SheetRange("Bob's tab"));
+		}
+
+		[Test]
+		// ADMIT: DataImporterEditorUtils.SheetRows pads the rows the Sheets API trims, so every CSV row has the header's
+		// width like the CSV export.
+		// RCR: DataImporterEditorUtils.cs SheetRows — change `rows.Max(row => row.Length)` to
+		// `rows.Min(row => row.Length)` → RED (ArgumentOutOfRangeException on the negative padding). 2026-11-16
+		public void SheetRows_RaggedRows_PadsToTheWidestRow()
+		{
+			var rows = DataImporterEditorUtils.SheetRows(JArray.Parse("[[\"Id\",\"Name\",\"Power\"],[\"1\"],[]]"));
+
+			CollectionAssert.AreEqual(new[] { "Id", "Name", "Power" }, rows[0]);
+			CollectionAssert.AreEqual(new[] { "1", "", "" }, rows[1]);
+			CollectionAssert.AreEqual(new[] { "", "", "" }, rows[2]);
+		}
+
+		[Test]
+		// ADMIT: DataImporterEditorUtils.SheetRows reads an empty tab, for which the Sheets API omits "values", as no
+		// rows, so the import reports the empty file instead of crashing.
+		// RCR: DataImporterEditorUtils.cs SheetRows — change `values?.Select` to `values.Select` → RED
+		// (ArgumentNullException). 2026-11-16
+		public void SheetRows_NoValues_ReturnsNoRows()
+		{
+			Assert.IsEmpty(DataImporterEditorUtils.SheetRows(null));
 		}
 
 		[Test]

@@ -21,9 +21,17 @@ namespace GameLovers.DataImporter.Editor
 			"Use it to pull from a duplicate of the sheet without changing the importers.";
 		private const string NoGoogleSheetTooltip = "No importer has a Google Sheet source";
 		private const string GoogleSheetKind = "Google Sheet";
-		private const string KeyTooltip =
-			"JSON key of a Google service account, used to pull private sheets shared with that account. Stored for " +
-			"you and this project in EditorPrefs, never in the project. Keep the file outside the project.";
+		private const string LinkSharedOnly = "only sheets shared as \"Anyone with the link\" can be pulled";
+
+		private static readonly (string Step, string Url)[] SetupSteps =
+		{
+			("Create a Google Cloud project, or pick an existing one.", "https://console.cloud.google.com/projectcreate"),
+			("Enable the Google Sheets API in that project.", "https://console.cloud.google.com/apis/library/sheets.googleapis.com"),
+			("Set up the sign-in screen with an app name and your e-mail. Audience: Internal for a Google Workspace team; " +
+			 "otherwise External, then Publish app.", "https://console.cloud.google.com/auth/overview"),
+			("Create an OAuth client of type Desktop app, then download its JSON file.",
+			 "https://console.cloud.google.com/auth/clients/create")
+		};
 
 		[SerializeField] private string _spreadsheetIdOverride;
 
@@ -31,9 +39,9 @@ namespace GameLovers.DataImporter.Editor
 			new Dictionary<string, (ImportResult Result, DateTime Time)>();
 
 		private TextField _spreadsheetId;
-		private VisualElement _keyRow;
-		private TextField _keyField;
-		private VisualElement _keyStatus;
+		private VisualElement _google;
+		private string _googleMessage;
+		private bool _showSetup;
 		private Label _summary;
 		private ScrollView _rows;
 
@@ -52,19 +60,8 @@ namespace GameLovers.DataImporter.Editor
 			_spreadsheetId = new TextField("Spreadsheet ID override") { value = _spreadsheetIdOverride };
 			_rows = new ScrollView();
 
-			_keyRow = new VisualElement();
-			_keyField = new TextField("Service account key") { value = DataImporterEditorUtils.ServiceAccountKeySetting };
-			_keyStatus = new VisualElement();
-			_keyRow.AddToClassList("importer-key");
-			_keyField.AddToClassList("importer-key__field");
-			_keyField.tooltip = KeyTooltip;
-			_keyField.RegisterValueChangedCallback(change =>
-			{
-				DataImporterEditorUtils.ServiceAccountKeySetting = change.newValue;
-				UpdateKeyStatus();
-			});
-			_keyRow.Add(_keyField);
-			_keyRow.Add(new Button(BrowseKey) { text = "Browse", tooltip = "Pick the service account's JSON key file" });
+			_google = new VisualElement();
+			_google.AddToClassList("importer-google");
 			_spreadsheetId.RegisterValueChangedCallback(change => _spreadsheetIdOverride = change.newValue);
 			toolbar.AddToClassList("importer-toolbar");
 			toolbar.Add(new Button(() => Run(DataImporterEditorUtils.DiscoverImporters(), true)) { text = "Pull And Import All" });
@@ -74,10 +71,9 @@ namespace GameLovers.DataImporter.Editor
 			rootVisualElement.AddToClassList("importer-window");
 			rootVisualElement.Add(toolbar);
 			rootVisualElement.Add(_spreadsheetId);
-			rootVisualElement.Add(_keyRow);
-			rootVisualElement.Add(_keyStatus);
+			rootVisualElement.Add(_google);
 			rootVisualElement.Add(_rows);
-			UpdateKeyStatus();
+			RebuildGoogle();
 			RebuildRows();
 		}
 
@@ -107,8 +103,6 @@ namespace GameLovers.DataImporter.Editor
 			_summary.text = failed > 0 ? $"{importers.Count} importers, {failed} failed" : $"{importers.Count} importers";
 			_spreadsheetId.SetEnabled(hasGoogleSheet);
 			_spreadsheetId.tooltip = hasGoogleSheet ? OverrideTooltip : NoGoogleSheetTooltip;
-			_keyRow.SetEnabled(hasGoogleSheet);
-			_keyField.tooltip = hasGoogleSheet ? KeyTooltip : NoGoogleSheetTooltip;
 
 			if (importers.Count == 0)
 			{
@@ -194,56 +188,160 @@ namespace GameLovers.DataImporter.Editor
 			RebuildRows();
 		}
 
-		private void BrowseKey()
+		private void RebuildGoogle()
 		{
-			var path = EditorUtility.OpenFilePanel("Service account key", string.Empty, "json");
+			var hasClient = DataImporterSettings.instance.HasGoogleClient;
+			var header = new VisualElement();
+			var title = new Label("Google sign-in");
+			var status = new Label();
 
-			if (!string.IsNullOrEmpty(path))
+			_google.Clear();
+			header.AddToClassList("importer-google__header");
+			title.AddToClassList("importer-row__name");
+			status.AddToClassList("importer-google__status");
+			header.Add(title);
+			header.Add(status);
+
+			if (!hasClient)
 			{
-				_keyField.value = path;
+				status.text = $"Not set up: {LinkSharedOnly}";
+			}
+			else if (GoogleSignIn.InProgress)
+			{
+				status.text = "Waiting for you to approve in the browser…";
+				header.Add(new Button(() =>
+				{
+					GoogleSignIn.Cancel();
+					RebuildGoogle();
+				}) { text = "Cancel" });
+			}
+			else if (GoogleSignIn.SignedIn)
+			{
+				status.text = $"Signed in as {GoogleSignIn.Account}: pulls can read your private sheets";
+				header.Add(new Button(() =>
+				{
+					GoogleSignIn.SignOut();
+					RebuildGoogle();
+				}) { text = "Sign Out" });
+			}
+			else
+			{
+				status.text = $"Not signed in: {LinkSharedOnly}";
+				header.Add(new Button(SignIn) { text = "Sign In With Google", tooltip = "Opens Google's consent page in your browser" });
+			}
+
+			header.Add(new Button(() =>
+			{
+				_showSetup = !_showSetup;
+				RebuildGoogle();
+			})
+			{
+				text = _showSetup ? "Hide Setup" : hasClient ? "Setup" : "Set Up",
+				tooltip = "One person sets up Google sign-in once per project; everyone else only signs in"
+			});
+			_google.Add(header);
+
+			if (_googleMessage != null)
+			{
+				_google.Add(new HelpBox(_googleMessage, HelpBoxMessageType.Error));
+			}
+
+			if (_showSetup)
+			{
+				_google.Add(SetupGuide(hasClient));
 			}
 		}
 
-		private void UpdateKeyStatus()
+		private VisualElement SetupGuide(bool hasClient)
 		{
-			var setting = DataImporterEditorUtils.ServiceAccountKeySetting;
-			var environment = DataImporterEditorUtils.ServiceAccountKeyEnvironment;
-			var path = DataImporterEditorUtils.ResolveServiceAccountKey(Array.Empty<string>(), setting, environment);
+			var guide = new VisualElement();
 
-			_keyStatus.Clear();
+			guide.AddToClassList("importer-google__guide");
+			guide.Add(StatusLabel("Once per project, by one person. The rest of the team then only clicks Sign In With Google."));
 
-			if (path == null)
+			for (var i = 0; i < SetupSteps.Length; i++)
 			{
-				_keyStatus.Add(StatusLabel("No key: only sheets shared as \"Anyone with the link\" can be pulled"));
+				var url = SetupSteps[i].Url;
 
+				guide.Add(SetupStep(i + 1, SetupSteps[i].Step, new Button(() => Application.OpenURL(url)) { text = "Open", tooltip = url }));
+			}
+
+			guide.Add(SetupStep(SetupSteps.Length + 1,
+				hasClient ? "The client is loaded. Load another file to replace it." : "Load the downloaded file here.",
+				new Button(LoadClientFile) { text = "Load Client File…" }));
+			guide.Add(StatusLabel("It is saved to ProjectSettings/GameLoversDataImporterSettings.asset. Commit that file to share it."));
+
+			return guide;
+		}
+
+		private void LoadClientFile()
+		{
+			var path = EditorUtility.OpenFilePanel("Google OAuth client file", string.Empty, "json");
+
+			if (string.IsNullOrEmpty(path))
+			{
 				return;
 			}
 
-			var origin = string.IsNullOrWhiteSpace(setting) ? "GOOGLE_APPLICATION_CREDENTIALS" : "this field";
-
 			try
 			{
-				if (DataImporterEditorUtils.IsInsideProject(path))
-				{
-					_keyStatus.Add(new HelpBox($"The key from {origin} is inside the project. Move it out so it cannot be committed.",
-						HelpBoxMessageType.Warning));
-				}
+				var client = GoogleSignIn.ReadClientFile(File.ReadAllText(path));
 
-				var account = GoogleServiceAccount.ClientEmail(File.ReadAllText(path));
-
-				_keyStatus.Add(StatusLabel($"Signs in as {account} (key from {origin}). Share private sheets with that address."));
+				DataImporterSettings.instance.SetGoogleClient(client.ClientId, client.ClientSecret);
+				_googleMessage = null;
+				_showSetup = false;
 			}
 			catch (Exception e)
 			{
-				_keyStatus.Add(new HelpBox($"The key from {origin} cannot be used: {e.Message}", HelpBoxMessageType.Error));
+				_googleMessage = e.Message;
 			}
+
+			RebuildGoogle();
+		}
+
+		private void SignIn()
+		{
+			_googleMessage = null;
+
+			try
+			{
+				GoogleSignIn.Begin(error =>
+				{
+					if (this == null)
+					{
+						return;
+					}
+
+					_googleMessage = error;
+					RebuildGoogle();
+				});
+			}
+			catch (Exception e)
+			{
+				_googleMessage = e.Message;
+			}
+
+			RebuildGoogle();
+		}
+
+		private static VisualElement SetupStep(int number, string text, Button action)
+		{
+			var step = new VisualElement();
+			var label = new Label($"{number}. {text}");
+
+			step.AddToClassList("importer-google__step");
+			label.AddToClassList("importer-google__step-text");
+			step.Add(label);
+			step.Add(action);
+
+			return step;
 		}
 
 		private static Label StatusLabel(string text)
 		{
 			var label = new Label(text);
 
-			label.AddToClassList("importer-key__status");
+			label.AddToClassList("importer-google__note");
 
 			return label;
 		}
