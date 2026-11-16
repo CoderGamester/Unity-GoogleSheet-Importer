@@ -4,7 +4,7 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2026-11-16
+## [1.0.0] - 2026-11-17
 
 **New**:
 - **Sources**: Import CSV files in the project, Excel worksheets (`Source => "Assets/Data/Balance.xlsx#Items"`, read without a third-party library), and Google Sheet tabs. A Pull copies the upstream into the CSV file, so imports work offline and every data change is a reviewable diff.
