@@ -29,7 +29,7 @@ Git dependencies are not resolved transitively by Unity. Install GameData and th
 {
   "dependencies": {
     "com.gamelovers.gamedata": "https://github.com/CoderGamester/Unity-GameData.git#1.0.3",
-    "com.gamelovers.spreadsheetimporter": "https://github.com/CoderGamester/Unity-GoogleSheet-Importer.git#1.0.0"
+    "com.gamelovers.spreadsheetimporter": "https://github.com/CoderGamester/Unity-Spreadsheet-Importer.git#1.0.0"
   }
 }
 ```
@@ -177,4 +177,4 @@ The **Spreadsheet Import** sample has one importer per source, with the CSV file
 
 ## Help and changes
 
-Read [CHANGELOG.md](CHANGELOG.md), open an [issue](https://github.com/CoderGamester/Unity-GoogleSheet-Importer/issues), and contribute through the repository. The package is MIT licensed; see [LICENSE.md](LICENSE.md).
+Read [CHANGELOG.md](CHANGELOG.md), open an [issue](https://github.com/CoderGamester/Unity-Spreadsheet-Importer/issues), and contribute through the repository. The package is MIT licensed; see [LICENSE.md](LICENSE.md).
