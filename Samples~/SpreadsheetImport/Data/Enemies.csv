@@ -1,0 +1,4 @@
+Id,Name,Health,Speed,IsBoss,ReleaseDate
+1,Slime,20,1.5,FALSE,2026-01-15
+2,"Goblin, Scout",35,2.25,FALSE,2026-03-01
+3,Stone Golem,350,0.75,TRUE,2026-06-30

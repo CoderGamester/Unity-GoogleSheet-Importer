@@ -4,6 +4,40 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-11-17
+
+**New**:
+- **Sources**: Import CSV files in the project, Excel worksheets (`Source => "Assets/Data/Balance.xlsx#Items"`, read without a third-party library), and Google Sheet tabs. A Pull copies the upstream into the CSV file, so imports work offline and every data change is a reviewable diff.
+- **Outputs**: The ScriptableObject asset is always written. An opt-in JSON payload (`WriteJsonPayload`) holds the same content for remotely delivered data.
+- **Private Google Sheets**: Sign in with Google in the Spreadsheet Importer window after a one-time setup per project. Builds without a person use a service-account key from `-spreadsheetServiceAccountKey` or `GOOGLE_APPLICATION_CREDENTIALS`.
+- **Spreadsheet Importer window**: `Tools/GameLovers/Spreadsheet Importer/Open Window` lists every importer with its source, Open Source, Pull And Import, Import, and Select Asset buttons, the result of its last run, and a cancellable progress bar for pulls.
+- **Headless runs**: `ImportAll`, `PullAndImportAll`, and `RunFromCommandLine` run in batchmode. `RunFromCommandLine` selects importers, pulls, overrides the spreadsheet id, and writes a JSON report. Each failure names its `path:line`, and the run exits non-zero.
+- **Spreadsheet Import sample**: One importer per source (a CSV file, an Excel workbook, and two Google Sheet tabs) with the imported assets and a JSON payload to compare.
+
+**Changed**:
+- Renamed the package to `com.gamelovers.spreadsheetimporter` (GameLovers Spreadsheet Importer), with new assemblies, namespaces, and type names.
+- Google Sheets are now pulled into a CSV file in the project, and imports read that file.
+- Imports now fail on a column without a matching field and on a field without a column; set `StrictColumns` to false to keep the old behavior.
+- A CSV file without data rows now fails the import instead of emptying the asset.
+- Moved the CSV parser out of player builds; only `ParseIgnoreAttribute` remains in the runtime assembly.
+- Importers now run one after another in import order.
+- Declared Unity 6000.0 as the package minimum and documented 6000.0.x, 6000.3.x, and 6000.5.x as compatibility reference streams.
+
+**Removed**:
+- The `GoogleSheetImporter` asset and its inspector; the Spreadsheet Importer window and menus replace them.
+- The Importers Example sample and its generated-ID importer; the Spreadsheet Import sample replaces it.
+
+**Migration**:
+- Follow `MIGRATION.md` to update the manifest entry, assembly references, namespaces, and importer base types.
+
+**Fixed**:
+- Fixed Google Sheet URLs copied from the browser in the current `/edit?gid=…#gid=…` form being downloaded as a web page.
+- Fixed CSV files with LF line endings being read as a single row, and quoted cells with line breaks or doubled quotes being misread.
+- Fixed numbers and dates being parsed with the machine's regional settings.
+- Fixed Import All saving assets before the downloads had finished.
+- Fixed array fields failing to import, and Key/Value sub-lists failing when the sheet had unused columns.
+- Fixed an importer writing into an asset of a same-named type from another namespace.
+
 ## [0.7.3] - 2026-08-04
 
 **Changed**:

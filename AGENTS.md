@@ -1,70 +1,63 @@
-# GameLovers.GoogleSheetImporter - AI Agent Guide
+# GameLovers Spreadsheet Importer — Agent Guide
 
-> **Companion files**: `CLAUDE.md` wraps this file for Claude Code — edit `AGENTS.md`, not `CLAUDE.md`. `README.md` is the user-facing entry point.
+This guide adds package-specific rules to the host repository guide. Consumer usage belongs in `README.md`.
 
-## 1. Package Overview
-- **Package**: `com.gamelovers.googlesheetimporter`
-- **Unity**: 6000.0+
-- **Dependencies** (see `package.json`)
-  - `com.unity.nuget.newtonsoft-json` (2.0.0): fallback JSON deserialization path in `CsvParser.Parse`
-  - `com.gamelovers.gamedata` (1.0.0): `IConfigsContainer<TConfig>` / `ISingleConfigContainer<TConfig>` (the interfaces a target `ScriptableObject` must implement) and `UnitySerializedDictionary<,>` (recognized specially by `CsvParser.DeserializeObject`)
+## Scope
 
-Editor-time tool that downloads a published Google Sheet as CSV and deserializes each row into a `[Serializable]` struct, saved onto a `ScriptableObject`. All import logic runs in the Editor only — there is no runtime component.
+- Package: `com.gamelovers.spreadsheetimporter`; minimum Unity version and dependencies are authoritative in `package.json`.
+- The pipeline is Editor-only: an upstream (Google Sheet or Excel worksheet) is pulled into a CSV file in the project, and the CSV file is imported into a ScriptableObject asset. Nothing parses sheet data in a player.
+- Runtime assembly `GameLovers.SpreadsheetImporter` holds only `ParseIgnoreAttribute`, because config structs in player assemblies carry it. Editor namespace: `GameLovers.SpreadsheetImporter.Editor`.
+- This package is render-pipeline-neutral.
 
-## 2. Runtime Architecture (high level)
+## Assembly boundaries
 
-There are two independent halves: a general-purpose CSV parser (`Runtime/`, no Editor dependency) and the Google Sheet import pipeline built on top of it (`Editor/`, `UnityEditor`-only).
+- `Runtime/GameLovers.SpreadsheetImporter.asmdef` must stay free of `UnityEditor`, GameData, and Newtonsoft references. Do not move parsing, reading, or writing code into it.
+- The CSV parser, the Excel reader, importer discovery, menus, the window, asset writes, and web requests belong under `Editor/`.
+- The Editor assembly depends on GameData types exposed in its API. Preserve direct asmdef/package dependencies; do not rely on transitive resolution.
+- `XlsxReader` uses only `System.IO.Compression` and `System.Xml.Linq`. Do not add a third-party spreadsheet library.
 
-### CSV parsing (`GameLovers.GoogleSheetImporter`, `Runtime/CsvParser.cs`)
-- `CsvParser.ConvertCsv(string csv)` → `List<Dictionary<string, string>>`. One dictionary per data row, keyed by header. A header prefixed with `$` (`IGNORE_COLUMN_CHAR`) is dropped entirely during this pass.
-- `CsvParser.DeserializeTo<T>(Dictionary<string, string> data, ...)` reflects over `T`'s public fields (not properties) and populates each from the matching dictionary key. Fields marked `[ParseIgnore]` are skipped. A field the CSV doesn't have a matching key for is silently left at its default — there is no "missing column" error.
-- `CsvParser.DeserializeObject` (the per-field dispatcher `DeserializeTo` calls) recognizes, in order: arrays, `IList`/generic list, a type whose base type closes over `UnitySerializedDictionary<,>`, plain `IDictionary`, then falls through to `Parse` for everything else (primitives, enums, `DateTime`, `TimeSpan`, nullable value types, and a Newtonsoft.Json fallback for anything else).
-- `CsvParser.ArrayParse<T>` / `DictionaryParse<TKey,TValue>` split a single cell's text on `ArraySplitChars` (`, ( ) [ ] { }`) and `PairSplitChars` (`: < > = |`) respectively — a cell like `1,2,3` or `(1,2,3)` parses as an array; `a:1,b:2` or a flat `a,1,b,2` (even count, no pair-split char in the first element) parses as a dictionary.
-- **Key/value struct auto-detection**: `Parse` special-cases a value-type struct whose only two public fields are named exactly `Key`/`Value` or `Value1`/`Value2` — it constructs the struct via `Activator.CreateInstance(type, key, value)` from a `PairSplitChars`-delimited cell. This is what makes `UnitySerializedDictionary<TKey,TValue>`'s entry struct importable from a single cell.
-- **Sub-lists**: a config field whose CSV column header ends in `[]` (`SUB_LIST_SUFFIX`) is not itself deserialized — `GoogleSheetSingleConfigSubListImporter.Deserialize` (see below) detects the suffix and instead reads a run of subsequent rows (each marked with `Key == "#"`, `IGNORE_FIELD_CHAR`) as the sub-list's own rows, via `CsvParser.DeserializeSubList`.
+## Pipeline invariants
 
-### Import pipeline (`GameLoversEditor.GoogleSheetImporter`, `Editor/`)
-- **`IGoogleSheetConfigsImporter`** (`Editor/GoogleSheetConfigsImporter.cs`) — the one interface every importer implements: `string GoogleSheetUrl { get; }` + `void Import(List<Dictionary<string,string>> data)`. `GoogleSheetToolImporter` discovers every non-abstract type implementing this interface via `AppDomain.CurrentDomain.GetAssemblies()` reflection — an importer needs no registration beyond existing as a concrete class.
-- **`IScriptableObjectImporter`** — optional second interface (`Type ScriptableObjectType { get; }`) that lets the inspector's "Select Object" button locate/select the target asset. `GoogleSheetScriptableObjectImportContainer<TScriptableObject>` implements both.
-- Three ready-made base classes, all abstract, all extending `GoogleSheetScriptableObjectImportContainer<TScriptableObject>`:
-  - **`GoogleSheetConfigsImporter<TConfig, TScriptableObject>`** — one row per `TConfig` entry; `TScriptableObject` must implement `IConfigsContainer<TConfig>` (from `GameLovers.GameData`). Override `Deserialize(Dictionary<string,string> row)` only if you need custom per-row logic; the default calls `CsvParser.DeserializeTo<TConfig>`.
-  - **`GoogleSheetSingleConfigImporter<TConfig, TScriptableObject>`** — the entire sheet becomes one `TConfig`; `TScriptableObject` must implement `ISingleConfigContainer<TConfig>`. You must override `Deserialize(List<Dictionary<string,string>> data)` yourself (no default).
-  - **`GoogleSheetSingleConfigSubListImporter<TConfig, TScriptableObject>`** — same single-config shape, but each row is `Key`/`Value` pair matched against `TConfig`'s field names by reflection, with sub-list support (see above). Override `GetDeserializers()` to supply custom `Func<string, Type, object>[]` parsers.
-- **`GoogleSheetImportOrderAttribute`** (`[GoogleSheetImportOrder(int)]`, class-level) — controls the order `GoogleSheetToolImporter.GetAllImporters()` runs importers in when "Import All Sheets" is pressed. Lower runs first; default (no attribute) is `int.MaxValue`. Importers with equal order are broken by type-name alphabetical sort.
-- **`GoogleSheetImporter`** (`Editor/GoogleSheetImporter.cs`) — a `[CreateAssetMenu]` `ScriptableObject` with one field, `ReplaceSpreadsheetId`. Its own custom inspector, `GoogleSheetToolImporter`, is the actual UI: lists every discovered importer with per-row "Import" / "Select Object" buttons and a top-level "Import All Sheets" button. `ReplaceSpreadsheetId`, when set, substitutes the spreadsheet ID segment of every importer's `GoogleSheetUrl` for that run only (useful for testing against a duplicated sheet) — it does not mutate the importer's own `GoogleSheetUrl`.
-- **Fetch mechanism**: `GoogleSheetToolImporter.ImportSheetAsync` rewrites the sheet's `.../edit#gid=...` URL to `.../export?format=csv&gid=...` and downloads it with `UnityWebRequest`. **The source sheet must be published/shared such that this CSV export URL is publicly reachable** — there is no auth step in this package.
+- The CSV file is the single input of an import. `Import` never reads the upstream; only `Pull` does, and `Pull` only rewrites the CSV file. Keep the two steps separate so an import is reproducible offline and in CI.
+- Pulled CSV files are written with LF line endings and a final newline, so a pull that changes no data produces no diff.
+- The ScriptableObject asset is the default output and is always written. The JSON payload is opt-in per importer through `WriteJsonPayload` and is `JsonUtility.ToJson` of the same asset, so both outputs always hold the same content. Do not add a second serializer or a runtime reader type for it.
+- `Run` executes importers sequentially, records one `ImportResult` per importer, logs each failure as `path:line: message`, and never throws or saves. `ImportAll` and `RunFromCommandLine` run it over `ImportOrderAttribute` order, then type name, save once, and throw when any importer failed. That exception is what makes a batchmode `-executeMethod` run exit non-zero; do not swallow it.
+- The public field names of `ImportReport` and `ImportResult` are the JSON report format agents parse. Renaming one or turning it into a property is a breaking change.
+- `RunFromCommandLine` deletes an existing report before running, so a report on disk always belongs to the last run. An unknown `-spreadsheetImporters` name fails before any importer runs.
+- Progress bars are skipped in batchmode. Cancelling a download aborts the request and fails only that importer.
+- A CSV file without data rows is an import error, so an emptied sheet or worksheet cannot silently empty an asset.
+- Report a row failure by throwing `SpreadsheetImportException` with the zero-based data row. Only `SpreadsheetImporterEditorUtils.Import` turns the row into a file line, using the line map `CsvParser.ConvertCsv` fills.
+- Google Sheet URLs are rewritten to public CSV export URLs from the spreadsheet id and `gid` wherever they appear in the URL, including the account-scoped `/u/<n>/` form. A published-to-web URL is rejected. An HTML response is an error, not data.
+- A pull of a Google Sheet picks one credential, in this order: the `-spreadsheetServiceAccountKey` key, the signed-in user (`GoogleSignIn`), the `GOOGLE_APPLICATION_CREDENTIALS` key, then an anonymous download of the CSV export URL. `ServiceAccountKeyFor` owns that order.
+- With a credential, the pull reads the tab through the Sheets API (`spreadsheets.readonly` only; never a Drive scope) and writes the values as CSV, padded to the widest row. Do not send a token to the CSV export URL: Google does not document it for that endpoint.
+- `GoogleSignIn` is an installed-app OAuth flow: loopback redirect on `127.0.0.1`, PKCE S256, and a state check. Google still requires the Desktop client's secret. The client comes from `SpreadsheetImporterSettings` in `ProjectSettings/`, shared by the team. The refresh token and account live per user and project in EditorPrefs. An `invalid_grant` on refresh signs the user out and asks for a new sign-in.
+- Never log, report, or store a key's content, an assertion, an authorization code, or a token outside those places. A service-account key inside the project folder gets a warning, not a refusal, because CI may write the key into its workspace.
+- The Editor's Mono runtime cannot import PKCS#8 keys (`RSA.ImportPkcs8PrivateKey` throws `PlatformNotSupportedException`), so `GoogleServiceAccount.ReadPrivateKey` reads the DER itself. Keep it dependency-free.
+- The spreadsheet-id override is a per-pull argument and must not mutate importer definitions.
 
-## 3. Key Directories / Files
-- **Runtime**: `Runtime/CsvParser.cs` (the whole runtime surface), `Runtime/ParseIgnoreAttribute.cs`
-- **Editor**: `Editor/GoogleSheetConfigsImporter.cs` (interfaces + 3 base importer classes), `Editor/GoogleSheetImporter.cs` (the asset + menu item), `Editor/GoogleSheetToolImporter.cs` (the custom inspector that does the actual fetch/import work), `Editor/GoogleSheetImportOrderAttribute.cs`
-- **Tests**: `Tests/Editor/CsvParserTest.cs` — the only test file, covering `CsvParser` deserialization paths (primitives, enums, ignored fields, key/value structs). There is no test coverage for the `Editor/` import pipeline itself (it requires a live network fetch and `AssetDatabase` state). Before reading, editing, or creating any file in `Tests/`, you **MUST** read [`Tests/AGENTS.md`](Tests/AGENTS.md) first.
-- **Samples**: `Samples~/Importers Example/` — `GameIdsImporter.cs` (`IGoogleSheetConfigsImporter` directly, generates an enum + lookup extension methods as a `.cs` file via `AssetDatabase`/`File.WriteAllText` — the only importer that writes code instead of a `ScriptableObject`), `GameConfigsImporter.cs` (`GoogleSheetSingleConfigImporter<GameConfig, GameConfigs>`), `DataConfigsImporter.cs` (`GoogleSheetConfigsImporter<DataConfig, DataConfigs>`). These reference `Configs.GameConfig` / `Configs.DataConfigs` / etc. types that are **not included in the sample** — it demonstrates the importer classes' shape, not a runnable end-to-end example.
+## Parser invariants
 
-## 4. Important Behaviors / Gotchas
-- **No compile-time schema validation**: a CSV column with no matching field, or a field with no matching column, is silently ignored / left default. Typos in either the sheet header or the target struct's field name fail silently, not loudly.
-- **Reflection targets public fields, not properties**: `CsvParser.DeserializeTo` uses `type.GetFields()`. A config struct with `{ get; set; }` auto-properties will not receive any data through this path — use public fields.
-- **`GoogleSheetSingleConfigSubListImporter` field matching is by exact name**: `type.GetField(fieldName)` — a `[]`-suffixed header for a sub-list has the suffix stripped before the lookup (`"Items[]"` → looks up a field literally named `Items`).
-- **`DictionaryParse` throws `IndexOutOfRangeException`** if a plain (non-paired) dictionary cell has an odd number of comma-separated values — there must be an even count when no `PairSplitChars` character is present in the data.
-- **The Google Sheet CSV export URL must be publicly reachable** — "Anyone with the link can view" sharing, or the underlying `UnityWebRequest` fails with no sheet-specific error message (just the HTTP failure).
-- **`ReplaceSpreadsheetId` is per-run, not persisted per-importer**: it patches every importer's URL for that one "Import All Sheets" / "Import" click; it is not saved onto the config assets.
+- `CsvParser.ConvertCsv` is quote-aware: a quoted cell may contain commas, doubled quotes, and line breaks, and CRLF, LF, and CR files read the same. A quote opens a quoted cell only at the start of a cell; anywhere else it is text. Rows whose cells are all blank are skipped. Cell values and headers are trimmed.
+- Headers that are empty or begin with `$` are ignored. A duplicate header is an error.
+- All scalar parsing uses the invariant culture. Never parse or format a number, date, or time with the current culture.
+- `CsvParser.DeserializeTo<T>` populates public fields, not properties, and stays lenient: missing columns and unmatched headers leave defaults. Strictness lives in `CsvParser.ValidateColumns`, which the row-list importer calls unless `StrictColumns` is overridden.
+- Headers ending in `[]` drive the single-config sub-list importer; matching is by exact field name after removing the suffix. An unknown Key is an error unless the key starts with `$`.
+- Preserve `DeserializeObject` dispatch precedence: arrays, lists, `UnitySerializedDictionary`, plain dictionaries, then scalar/JSON parsing.
+- Array and dictionary cell parsing uses the package delimiter sets. A flat dictionary representation must contain an even number of values.
+- Key/value struct detection applies only to generic value types with exactly two public fields named `Key`/`Value` or `Value1`/`Value2`.
+- `XlsxReader` returns values only: numbers and dates as invariant text, time-only and elapsed-time cells as a duration, booleans as `TRUE`/`FALSE`, formulas as their cached value. Whether a number is a date comes from the cell's number format, never from its size. A formula without a cached value and an error cell are errors.
 
-## 5. Coding Standards (Unity 6 / C# 9.0)
-- **C#**: C# 9.0 syntax; explicit namespaces; no global usings.
-- **Assemblies**: `Runtime/GameLovers.GoogleSheetImporter.asmdef` has no Editor/UnityEditor reference — keep `CsvParser` and `ParseIgnoreAttribute` runtime-safe. All `UnityEditor` usage (asset creation, custom inspectors, `UnityWebRequest` fetch, menu items) belongs in `Editor/GameLovers.GoogleSheetImporter.Editor.asmdef`.
-- **Namespace split**: runtime types are `GameLovers.GoogleSheetImporter`; editor types are `GameLoversEditor.GoogleSheetImporter` (note the `GameLoversEditor` prefix, not `GameLovers.GoogleSheetImporter.Editor` — matches the sibling `com.gamelovers.gamedata` / `com.gamelovers.services` convention).
+## Importer invariants
 
-## 6. External Package Sources (for API lookups)
-- Newtonsoft.Json: `Library/PackageCache/com.unity.nuget.newtonsoft-json/`
-- GameData (`IConfigsContainer<T>`, `ISingleConfigContainer<T>`, `UnitySerializedDictionary<,>`): `Packages/com.gamelovers.gamedata/`
+- Concrete `ISpreadsheetImporter` implementations are discovered through `TypeCache`; no registration table is required.
+- An importer writes the project's first asset of exactly its ScriptableObject type, found through `SpreadsheetImporterEditorUtils.FindAsset`, and creates one next to the CSV file when there is none.
+- Use `ConfigsImporter<TConfig,TScriptableObject>` for one row per config entry, `SingleConfigImporter<TConfig,TScriptableObject>` for one config built from the whole sheet, and `SingleConfigSubListImporter<TConfig,TScriptableObject>` for Key/Value rows with nested row groups. Do not create a fourth base shape for a case one of these supports.
+- `IScriptableObjectImporter` is the optional discovery surface used by the window's Select Asset action. Keep it separate from `ISpreadsheetImporter` so code-generating importers are not forced to own an asset type.
+- A new source kind is a branch in `SpreadsheetImporterEditorUtils.Pull` that produces CSV text. Do not add a source interface until a consumer needs a source the package cannot own.
 
-## 7. Common change workflows
-- **Add a new importer**: implement `IGoogleSheetConfigsImporter` directly, or extend one of the three abstract base classes in `Editor/GoogleSheetConfigsImporter.cs` depending on whether the sheet is one-row-per-entry (`GoogleSheetConfigsImporter<,>`) or one-sheet-per-config (`GoogleSheetSingleConfigImporter<,>` / `...SubListImporter<,>`). No registration step — any concrete class implementing the interface is picked up automatically by reflection.
-- **Change CSV parsing behavior**: `Runtime/CsvParser.cs` is the single file to edit; add/adjust `Tests/Editor/CsvParserTest.cs` coverage alongside.
-- **Add a custom field type**: pass a `Func<string, Type, object>[]` of custom deserializers into `DeserializeTo`/`DeserializeObject`/`Parse` — do not special-case new types inside `CsvParser` unless the type is broadly useful (existing special cases: arrays, lists, dictionaries, `UnitySerializedDictionary`, key/value structs, `DateTime`, `TimeSpan`, nullable value types).
+## Tests and verification
 
-## 8. Update Policy
-Update this file when:
-- `CsvParser`'s type-dispatch order or special-casing changes (arrays / lists / dictionaries / `UnitySerializedDictionary` / key-value structs / fallback `Parse`)
-- The importer interface/base-class shape changes (`IGoogleSheetConfigsImporter`, `IScriptableObjectImporter`, the three `GoogleSheet*Importer<,>` base classes)
-- The fetch mechanism changes (URL rewriting, auth requirements, `GoogleSheetToolImporter`'s discovery/ordering logic)
-- Dependencies in `package.json` change (cross-check this file and `README.md` for stale references)
+- Before changing anything under `Tests/`, read `Tests/AGENTS.md`.
+- The automated suite covers the parser, the Excel reader, URL rewriting, `Run` results, command-line arguments, credential order, and the sign-in and key helpers. The live Google sign-in and Google's endpoints are not covered: a change there needs a real sign-in and a pull of a private sheet. Asset writes, the window, and downloads are not covered: changes there require a real `Import All` and `Pull And Import All` on the imported sample and inspection of the resulting assets.
+- Changes to the window require a visual check in the Editor.
+- Update `README.md`, `MIGRATION.md`, and the sample when importer setup or public parsing behavior changes; update this guide only for durable package invariants.
