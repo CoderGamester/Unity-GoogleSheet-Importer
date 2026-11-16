@@ -23,13 +23,13 @@ It is not a runtime CSV or spreadsheet reader.
 
 ## Install
 
-Git dependencies are not resolved transitively by Unity. Install GameData and this package together, replacing `<release-tag>` with the newest tag listed in [CHANGELOG.md](CHANGELOG.md):
+Git dependencies are not resolved transitively by Unity. Install GameData and this package together:
 
 ```json
 {
   "dependencies": {
     "com.gamelovers.gamedata": "https://github.com/CoderGamester/Unity-GameData.git#1.0.3",
-    "com.gamelovers.spreadsheetimporter": "https://github.com/CoderGamester/Unity-GoogleSheet-Importer.git#<release-tag>"
+    "com.gamelovers.spreadsheetimporter": "https://github.com/CoderGamester/Unity-GoogleSheet-Importer.git#1.0.0"
   }
 }
 ```
