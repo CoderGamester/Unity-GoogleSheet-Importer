@@ -6,9 +6,32 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+**New**:
+- Added CSV files in the project as an import source, so data can be edited directly, imported offline, and reviewed as a diff.
+- Added Excel worksheets as an upstream source, read without a third-party library.
+- Added an opt-in JSON payload output (`WriteJsonPayload`) for remotely delivered content; the ScriptableObject asset stays the default.
+- Added `SpreadsheetImporterEditorUtils.ImportAll` for batchmode runs: it reports each failure as `path:line` and exits non-zero.
+- Added `SpreadsheetImporterEditorUtils.RunFromCommandLine` for batchmode runs of selected importers, with an optional pull, a spreadsheet-id override, and a JSON report.
+- Added the Spreadsheet Importer window under `Tools/GameLovers/Spreadsheet Importer`, with a source badge and the last result on each importer's row.
+- Added a cancellable progress bar to Google Sheet pulls.
+- Added private Google Sheets: sign in with Google in the Spreadsheet Importer window, after a one-time setup per project. Builds without a person can use a service-account key from the command line or `GOOGLE_APPLICATION_CREDENTIALS`.
+- Added the Spreadsheet Import sample with CSV, Excel, and Google Sheet sources.
+
 **Changed**:
+- Renamed the package to `com.gamelovers.spreadsheetimporter` (GameLovers Spreadsheet Importer), with new namespaces and type names. See `MIGRATION.md`.
+- Google Sheets are now pulled into a CSV file in the project, and imports read that file.
+- Imports now fail on a column without a matching field and on a field without a column; set `StrictColumns` to false to keep the old behavior.
+- Moved the CSV parser out of player builds; only `ParseIgnoreAttribute` remains in the runtime assembly.
+- Importers now run one after another in import order.
 - Declared Unity 6000.0 as the package minimum and documented 6000.0.x, 6000.3.x, and 6000.5.x as compatibility reference streams.
-- Made the Importers Example self-contained and moved its importer scripts to an Editor-only folder.
+- Removed the Importers Example sample and its generated-ID importer; the Spreadsheet Import sample replaces it.
+
+**Fixed**:
+- Fixed Google Sheet URLs copied from the browser in the current `/edit?gid=…#gid=…` form being downloaded as a web page.
+- Fixed CSV files with LF line endings being read as a single row, and quoted cells with line breaks or doubled quotes being misread.
+- Fixed numbers and dates being parsed with the machine's regional settings.
+- Fixed Import All saving assets before the downloads had finished.
+- Fixed array fields failing to import, and Key/Value sub-lists failing when the sheet had unused columns.
 
 ## [0.7.3] - 2026-08-04
 

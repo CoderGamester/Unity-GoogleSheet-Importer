@@ -1,4 +1,4 @@
-# GameLovers GoogleSheetImporter Tests — Agent Guide
+# GameLovers Spreadsheet Importer Tests — Agent Guide
 
 This guide adds test-only rules to the package and host guides.
 
@@ -64,19 +64,27 @@ Benchmarks use the inverted check: removing the workload from the measured body 
 
 ## Current suite
 
-- The package has one Editor-only test assembly and one fixture: `Tests/Editor/CsvParserTest.cs`.
-- The test assembly references the runtime importer and GameData assemblies, not the package Editor assembly. Do not claim coverage of network, importer discovery, inspectors, or `AssetDatabase` writes from this suite.
-- NSubstitute is referenced by the asmdef but is unused. Do not introduce a mock when direct parser input is cheaper.
-- The fixture is stateless and currently needs no setup/teardown.
+- The package has one Editor-only test assembly with five fixtures:
+  - `CsvParserTest`: CSV reading and writing, cell parsing, column validation.
+  - `XlsxReaderTest`: Excel worksheets.
+  - `SpreadsheetImporterEditorUtilsTest`: Google Sheet URL rewriting, `Run` results, the report format, command-line arguments, credential order, and Sheets API rows.
+  - `GoogleServiceAccountTest`: service-account key reading and the signed assertion.
+  - `GoogleSignInTest`: PKCE, the consent URL, client files, the redirect reply, and the id token.
+- The live sign-in and Google's endpoints are not covered.
+- `GoogleServiceAccountTest` generates its RSA key in memory and encodes it as PKCS#8 itself. Never commit a private key or a service-account JSON file, even a throwaway one: the repository is public and secret scanners flag them.
+- The test assembly references the package Editor assembly, where the parser and readers live, plus the runtime and GameData assemblies and Newtonsoft.Json. `InternalsVisibleTo` exposes the command-line helpers to it. Do not claim coverage of downloads, importer discovery, the window, or `AssetDatabase` writes from this suite.
+- `XlsxReaderTest` writes each workbook it needs into the temp folder from inline XML and deletes it in teardown. Do not add binary workbook fixtures.
+- Test importers are NSubstitute substitutes of `ISpreadsheetImporter`. Never declare a concrete `ISpreadsheetImporter` class in the test assembly: importer discovery would find it, and it would appear in the window and in `ImportAll`.
 
 ## Adding coverage
 
-- Add parser cases to `CsvParserTest` unless a genuinely independent subject justifies another fixture.
+- Add parser cases to `CsvParserTest` and reader cases to `XlsxReaderTest` unless a genuinely independent subject justifies another fixture.
 - Prefer table-driven cases for delimiters, scalar types, nullable values, collections, dictionaries, key/value structs, ignored fields, and fallback JSON.
 - Assert populated field values and failure behavior, not merely successful construction.
-- Editor pipeline behavior requires a manual import with a reachable CSV export and inspection of the generated asset or code.
+- A test that depends on the regional settings sets `CultureInfo.CurrentCulture` itself and restores it in a `finally`.
+- Asset writes, pulls, and the window require a real import of the Spreadsheet Import sample and inspection of the generated assets and CSV files.
 
 ## Verification
 
-- Run the Editor test assembly after every runtime parser change.
+- Run the Editor test assembly after every parser, reader, or URL-rewriting change.
 - Update this guide only when the test assembly, fixture layout, or stable test convention changes.

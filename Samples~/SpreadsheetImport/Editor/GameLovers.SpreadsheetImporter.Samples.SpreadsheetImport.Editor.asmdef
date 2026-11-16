@@ -1,0 +1,20 @@
+{
+    "name": "GameLovers.SpreadsheetImporter.Samples.SpreadsheetImport.Editor",
+    "rootNamespace": "",
+    "references": [
+        "GameLovers.SpreadsheetImporter.Samples.SpreadsheetImport",
+        "GameLovers.SpreadsheetImporter.Editor",
+        "GameLovers.GameData"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
